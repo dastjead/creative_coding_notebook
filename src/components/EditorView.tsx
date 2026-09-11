@@ -76,7 +76,7 @@ export function EditorView({ projectId, repository, onBack, onChanged }: EditorV
     nextSession.mount();
     session.current = nextSession;
     return () => nextSession.dispose();
-  }, [handleRunnerEvent]);
+  }, [handleRunnerEvent, project?.id]);
 
   useEffect(() => {
     if (!project || saveState !== 'dirty') return;

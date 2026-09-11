@@ -1,0 +1,8 @@
+/assets/*
+  Access-Control-Allow-Origin: *
+  Cross-Origin-Resource-Policy: cross-origin
+
+/runner.html
+  Content-Security-Policy: default-src 'none'; script-src 'self' 'unsafe-eval'; style-src 'unsafe-inline'; img-src blob: data:; media-src blob: data:; connect-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'
+  Referrer-Policy: no-referrer
+  X-Content-Type-Options: nosniff

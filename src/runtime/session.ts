@@ -16,9 +16,18 @@ export class RunnerSession {
   private nonce = '';
   private runId = '';
   private mounted = false;
+  private ready = false;
+  private pendingRun?: Extract<RunnerCommand, { type: 'RUN' }>;
   private readonly onMessage = (event: MessageEvent) => {
     if (event.source !== this.frame?.contentWindow) return;
     if (!isRunnerEvent(event.data, this.nonce, this.runId)) return;
+    if (event.data.type === 'READY') {
+      this.ready = true;
+      if (this.pendingRun) {
+        this.post(this.pendingRun);
+        this.pendingRun = undefined;
+      }
+    }
     this.eventHandler(event.data);
   };
 
@@ -37,7 +46,7 @@ export class RunnerSession {
   }
 
   run(profileId: RuntimeProfileId, code: string, size: { width: number; height: number; pixelRatio: number }) {
-    this.post({
+    const command: Extract<RunnerCommand, { type: 'RUN' }> = {
       channel: RUNNER_CHANNEL,
       type: 'RUN',
       nonce: this.nonce,
@@ -45,7 +54,12 @@ export class RunnerSession {
       profileId,
       code,
       ...size,
-    });
+    };
+    if (!this.ready) {
+      this.pendingRun = command;
+      return;
+    }
+    this.post(command);
   }
 
   stop() {
@@ -73,6 +87,8 @@ export class RunnerSession {
 
   private replaceFrame() {
     this.frame?.remove();
+    this.ready = false;
+    this.pendingRun = undefined;
     this.nonce = this.ids.nonce();
     this.runId = this.ids.runId();
     const frame = document.createElement('iframe');
