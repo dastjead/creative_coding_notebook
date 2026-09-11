@@ -27,6 +27,20 @@ test('collects and renders a GLSL experiment in the isolated runner', async ({ p
   await expect(page.getByAltText('대표 캡처')).toBeVisible();
 });
 
+test('wraps and renders a twigl geekest golf body', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: '새 실험' }).first().click();
+  await page.getByLabel('제목').fill('Twigl golf');
+  await page.getByLabel('수집한 코드').fill(fixture('glsl/twigl-geekest.glsl'));
+  await expect(page.getByRole('heading', { name: 'GLSL / Shadertoy' })).toBeVisible();
+  await page.getByRole('button', { name: '작업본 만들기' }).click();
+  await page.getByRole('button', { name: '실행' }).click();
+
+  await expect(page.frameLocator('iframe[title="Creative code preview"]').locator('canvas')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText('RUNNING', { exact: true })).toBeVisible();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+});
+
 test('keeps a saved project across a page reload', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: '새 실험' }).first().click();

@@ -1,0 +1,1 @@
+for(float z,d,i,f,h;i++<1e2;z+=d){vec3 p=z*normalize(vec3(FC.xy-.5*r,r.y*.5));p.z+=t;h=.8;for(f=1.0472;f<2e2;f+=f)h+=abs(dot(sin(p.xz*f*.4+t*f+cos(p.zx*f*.6)),vec2(.4)))/f;d=.01+abs(p.y-h*2.+p.x*.7)*.2;o.rgb+=(vec3(.05,.1,.15)+h*vec3(.1))/d*2e-3;}o=tanh(o*o);

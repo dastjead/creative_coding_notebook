@@ -24,7 +24,7 @@ The visual direction is an editorial field notebook crossed with a graphics labo
 - `RuntimeProfile` detects a snippet, validates browser capability, and supplies runner configuration and error mapping.
 - `ProjectRepository` is the local persistence boundary. `SyncAdapter` is a no-op by default and a Supabase implementation when configured.
 
-GLSL accepts `main()` or Shadertoy `mainImage()` and supplies `iResolution`, `iTime`, `iFrame`, and `iMouse`. p5.js accepts one global-mode script. three.js exposes a pinned `THREE` global in an otherwise empty runner document and captures the first canvas.
+GLSL accepts `main()`, Shadertoy `mainImage()`, or a twigl geekest body using `FC`, `r`, `t`, and `o`; the wrapper supplies the matching coordinates, resolution, time, and output color without changing the collected source. It also supplies `iResolution`, `iTime`, `iFrame`, and `iMouse`. p5.js accepts one global-mode script. three.js exposes a pinned `THREE` global in an otherwise empty runner document and captures the first canvas.
 
 ## Safety, recovery, and storage
 
@@ -41,4 +41,3 @@ Supabase email magic-link authentication is enabled only when public environment
 ## Acceptance
 
 All three profiles have success and failure fixtures. A failed run, shader error, or hard reset must leave the draft and original source intact. Existing projects remain editable and executable offline after the app has been loaded once. Exported projects can be imported into an empty database. Local search covers title, source, code, tags, notes, profile, and source hostname.
-

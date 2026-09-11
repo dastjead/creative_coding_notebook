@@ -32,6 +32,7 @@
 |---|---:|---:|---|
 | GLSL 정상 렌더·PNG 캡처 | 미실행 | 미실행 | PENDING |
 | GLSL 컴파일 오류와 사용자 줄 번호 | 미실행 | 미실행 | PENDING |
+| twigl geekest 본문 렌더·PNG 캡처 | 미실행 | 미실행 | PENDING |
 | p5.js 정상 렌더·PNG 캡처 | 미실행 | 미실행 | PENDING |
 | p5.js 런타임 오류 후 원본/작업본 유지 | 미실행 | 미실행 | PENDING |
 | three.js 정상 렌더·PNG 캡처 | 미실행 | 미실행 | PENDING |

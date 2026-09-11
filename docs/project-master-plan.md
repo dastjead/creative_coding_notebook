@@ -25,7 +25,7 @@
 | 사용자 | 개인 사용자, 비공개 데이터 |
 | 첫 기기 | iOS 26+ iPhone |
 | 배포 | PWA 우선, App Store 배포는 현재 범위 밖 |
-| 초기 프로필 | GLSL/Shadertoy, p5.js WebGL, three.js WebGL |
+| 초기 프로필 | GLSL/Shadertoy/twigl geekest, p5.js WebGL, three.js WebGL |
 | 원본 | 수집 후 불변, 작업본·wrapper·revision과 분리 |
 | 캡처 | MVP는 PNG |
 | 네트워크 | runner 외부 연결과 원격 runtime 기본 차단 |
@@ -81,7 +81,7 @@ npm run test:e2e
 npm audit --audit-level=moderate
 ```
 
-현재 기준은 단위·컴포넌트 테스트 35개, 모바일 E2E 13개 통과와 Playwright WebKit offline reload 1개 skip이다. 새 profile이나 저장 형식을 추가할 때 이 기준을 낮추지 않는다.
+현재 기준은 단위·컴포넌트 테스트 38개, 모바일 E2E 15개 통과와 Playwright WebKit offline reload 1개 skip이다. 새 profile이나 저장 형식을 추가할 때 이 기준을 낮추지 않는다.
 
 운영 규칙:
 

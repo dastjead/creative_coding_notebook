@@ -28,7 +28,7 @@ export const runtimeProfiles: RuntimeProfile[] = [
     language: 'glsl',
     version: '1',
     runtimeVersion: 'WebGL2',
-    description: 'Fragment shader with main() or mainImage()',
+    description: 'Fragment shader with main(), mainImage(), or a twigl geekest body',
   },
   {
     id: 'p5-webgl',
@@ -62,10 +62,19 @@ export function buildGlslFragment(code: string): PreparedGlsl {
   const compatibility = /\bgl_FragColor\b/.test(userCode) ? '#define gl_FragColor fragmentColor\n' : '';
   const hasMain = /\bvoid\s+main\s*\(/.test(userCode);
   const hasMainImage = /\bvoid\s+mainImage\s*\(/.test(userCode);
-  if (!hasMain && !hasMainImage) {
-    throw new Error('GLSL requires void main() or Shadertoy mainImage().');
+  const isTwiglGeekestBody = !hasMain && !hasMainImage
+    && /\bFC\b/.test(userCode)
+    && /\bo(?:\.[rgba]{1,4})?\s*(?:[+*/-]?=)/.test(userCode);
+  if (!hasMain && !hasMainImage && !isTwiglGeekestBody) {
+    throw new Error('GLSL requires void main(), Shadertoy mainImage(), or a twigl geekest body using FC and o.');
   }
-  const adapter = hasMainImage && !hasMain
+  const aliases = isTwiglGeekestBody
+    ? '#define FC gl_FragCoord\n#define r iResolution.xy\n#define t iTime\n#define o fragmentColor'
+    : '';
+  const wrappedUserCode = isTwiglGeekestBody
+    ? `void main() {\n  fragmentColor = vec4(0.0);\n#line ${firstUserLine} 1\n${userCode}\n}`
+    : `#line ${firstUserLine} 1\n${userCode}`;
+  const adapter = hasMainImage && !hasMain && !isTwiglGeekestBody
     ? '\n#line 1 0\nvoid main() { mainImage(fragmentColor, gl_FragCoord.xy); }\n'
     : '';
   return {
@@ -78,8 +87,8 @@ export function buildGlslFragment(code: string): PreparedGlsl {
       'uniform vec4 iMouse;',
       'out vec4 fragmentColor;',
       compatibility.trimEnd(),
-      `#line ${firstUserLine} 1`,
-      userCode,
+      aliases,
+      wrappedUserCode,
       adapter,
     ].filter(Boolean).join('\n'),
   };

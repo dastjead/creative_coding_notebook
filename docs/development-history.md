@@ -140,6 +140,12 @@ Playwright WebKit은 `context.setOffline(true)` 이후 reload 자체가 내부 �
 
 Staging URL은 <https://dastjead.github.io/creative_coding_notebook/>이다.
 
+### 10 twigl geekest GLSL Golf 호환
+
+실제 수집 코드에서 `void main()`이나 `mainImage()` 없이 `FC`, `r`, `t`, `o` 축약 전역을 사용하는 twigl geekest 본문이 실행되지 않는 문제를 확인했다. 원인은 초기 GLSL wrapper가 함수 단위 입력만 허용한 것이었다.
+
+원문을 수정하지 않고 wrapper가 본문 전용 `main()`과 축약 전역을 제공하도록 확장했다. 함수형 GLSL을 본문 형식으로 오인하지 않도록 별도 판별 경계를 두고, 제공된 golf 코드를 Chromium/WebKit WebGL2에서 컴파일·렌더링하는 fixture를 추가했다.
+
 ## 개발 중 확인한 문제와 해결
 
 | 문제 | 관찰된 증상 | 해결 | 남은 확인 |
@@ -173,17 +179,18 @@ Staging URL은 <https://dastjead.github.io/creative_coding_notebook/>이다.
 | 검증 | 결과 |
 |---|---|
 | `npm run check` | 통과 |
-| `npm test` | 9개 파일, 35개 테스트 통과 |
+| `npm test` | 9개 파일, 38개 테스트 통과 |
 | `npm run build` | production build 및 PWA precache 38개 항목 생성 |
-| `npm run test:e2e` | 13개 통과, 1개 의도적 skip |
+| `npm run test:e2e` | 15개 통과, 1개 의도적 skip |
 | Chromium offline reload | 통과 |
 | Chromium/WebKit 세 프로필 실행 | 통과 |
 | Chromium/WebKit PNG capture·대표 썸네일 | 통과 |
 | Chromium/WebKit runner 보안 경계 | 통과 |
 | `npm audit --audit-level=moderate` | 취약점 0건 |
 | 390 × 844 시각 점검 | 수집, 실행, 라이브러리 화면 확인 |
-| GitHub Pages workflow | type check, 35개 테스트, build, deploy 통과 |
+| GitHub Pages workflow | type check, 38개 테스트, build, deploy 통과 |
 | 원격 HTTPS smoke test | Chromium/WebKit service worker와 GLSL runner 통과 |
+| twigl geekest golf fixture | Chromium/WebKit 컴파일·렌더링 통과 |
 
 production build에는 고정 runtime이 포함되어 p5.js와 three.js chunk가 크다는 경고가 남는다. 이는 현재 오프라인 실행 계약에 따른 것으로 build 실패는 아니며, 후속 단계에서 설치 후 다운로드 전략과 lazy runtime pack을 별도로 평가한다.
 

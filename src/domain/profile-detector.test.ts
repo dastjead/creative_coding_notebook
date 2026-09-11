@@ -7,6 +7,13 @@ describe('detectProfiles', () => {
     expect(matches[0]).toMatchObject({ profileId: 'glsl-webgl2', confidence: 1 });
   });
 
+  it('ranks twigl geekest bodies as GLSL', () => {
+    const matches = detectProfiles('for(float z,d;z<1e2;z+=d){o.rgb+=sin(FC.x/r.x+t);}')
+
+    expect(matches[0]).toMatchObject({ profileId: 'glsl-webgl2', confidence: 1 });
+    expect(matches[0]?.reasons).toContain('twigl geekest body aliases');
+  });
+
   it('ranks p5 global sketches as p5', () => {
     const matches = detectProfiles('function setup(){createCanvas(300,300,WEBGL)}\nfunction draw(){sphere(40)}');
     expect(matches[0]?.profileId).toBe('p5-webgl');

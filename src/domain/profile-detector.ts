@@ -10,6 +10,7 @@ export function detectProfiles(code: string): ProfileMatch[] {
   };
 
   addSignal(signals, 'glsl-webgl2', /\bmainImage\s*\(/, code, 100, 'Shadertoy mainImage entry point');
+  addSignal(signals, 'glsl-webgl2', /(?=[\s\S]*\bFC\b)(?=[\s\S]*\bo(?:\.[rgba]{1,4})?\s*(?:[+*/-]?=))/, code, 100, 'twigl geekest body aliases');
   addSignal(signals, 'glsl-webgl2', /\bgl_Frag(Color|Coord)\b|#version\s+300\s+es/, code, 70, 'GLSL fragment tokens');
   addSignal(signals, 'glsl-webgl2', /\bvec[234]\s*\(|\buniform\s+/, code, 35, 'GLSL vector or uniform syntax');
 

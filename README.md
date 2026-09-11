@@ -4,7 +4,7 @@ iPhone에서 짧은 크리에이티브 코드를 수집하고, 격리 실행하�
 
 ## 현재 구현 범위
 
-- GLSL/Shadertoy, p5.js WebGL, three.js WebGL 자동 제안과 수동 프로필 선택
+- GLSL/Shadertoy/twigl geekest, p5.js WebGL, three.js WebGL 자동 제안과 수동 프로필 선택
 - CodeMirror 작업본, 750ms 자동 저장, 실행별 revision, 마지막 성공본 복구
 - 수정할 수 없는 원본과 출처 URL, 메모, 태그, 즐겨찾기, 복제, 전체 검색
 - `sandbox="allow-scripts"` iframe 실행, nonce/run ID 검증, 하드 중지·초기화
@@ -55,6 +55,8 @@ E2E는 먼저 production build를 만들고 production preview를 iPhone 크기�
 
 편집기에서 가져온 로컬 파일은 runner 안에서 읽기 전용 `ASSETS['파일명']` Blob URL로 제공됩니다. 외부 URL은 계속 차단되므로 three.js texture 등은 이 값을 사용해야 합니다.
 
+GLSL runner는 `void main()`, Shadertoy `mainImage()` 외에 twigl geekest의 본문 전용 golf 코드도 지원합니다. 본문 전용 형식에서는 wrapper가 `FC`, `r`, `t`, `o`를 각각 fragment coordinate, resolution, time, output color에 연결하며 수집한 원문은 변경하지 않습니다.
+
 ## 데이터와 복구
 
 로컬 데이터는 두 IndexedDB 데이터베이스에 저장됩니다.
@@ -89,4 +91,4 @@ Supabase SQL은 아직 특정 원격 프로젝트에 적용되지 않았습니�
 
 ## 확인된 것과 남은 게이트
 
-TypeScript, 35개 단위·컴포넌트 테스트, production build, Chromium/WebKit 모바일 E2E로 로컬 수직 슬라이스와 세 프로필을 확인합니다. 실제 iOS 26 iPhone의 무한 루프 복구, WebGL context loss, 메모리 압박, 홈 화면 PWA 오프라인 재시작은 이 저장소만으로 실행할 수 없어 [체크리스트](docs/ios-device-validation.md)에 `PENDING`으로 남겨 둡니다.
+TypeScript, 38개 단위·컴포넌트 테스트, production build, Chromium/WebKit 모바일 E2E로 로컬 수직 슬라이스와 세 프로필을 확인합니다. 실제 iOS 26 iPhone의 무한 루프 복구, WebGL context loss, 메모리 압박, 홈 화면 PWA 오프라인 재시작은 이 저장소만으로 실행할 수 없어 [체크리스트](docs/ios-device-validation.md)에 `PENDING`으로 남겨 둡니다.
