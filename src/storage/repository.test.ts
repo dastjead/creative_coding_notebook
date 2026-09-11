@@ -1,7 +1,7 @@
 // @vitest-environment node
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { DexieProjectRepository } from './repository';
+import { DexieProjectRepository, type RepositoryMutation } from './repository';
 
 describe('DexieProjectRepository', () => {
   let repository: DexieProjectRepository;
@@ -81,6 +81,32 @@ describe('DexieProjectRepository', () => {
       expect(importedId).not.toBe(created.project.id);
     } finally {
       await importedRepository.destroy();
+    }
+  });
+
+  it('reports durable metadata and media mutations without exposing originals to later edits', async () => {
+    const mutations: RepositoryMutation[] = [];
+    const observedRepository = new DexieProjectRepository(`observed-${crypto.randomUUID()}`, {
+      async record(mutation) { mutations.push(mutation); },
+    });
+    try {
+      const created = await observedRepository.create({ title: 'Observed', code: 'original', profileId: 'p5-webgl' });
+      await observedRepository.saveDraft(created.project.id, { draftCode: 'working copy' });
+      await observedRepository.addCapture({
+        projectId: created.project.id,
+        revisionId: created.initialRevision.id,
+        mimeType: 'image/png',
+        width: 1,
+        height: 1,
+        pixelRatio: 1,
+        blob: new Blob(['png'], { type: 'image/png' }),
+      });
+
+      expect(mutations.map((item) => item.channel)).toEqual(['metadata', 'metadata', 'media']);
+      expect(mutations[0]).toMatchObject({ originalSource: { rawCode: 'original' } });
+      expect(mutations[1]).not.toHaveProperty('originalSource');
+    } finally {
+      await observedRepository.destroy();
     }
   });
 });

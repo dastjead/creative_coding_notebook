@@ -43,6 +43,12 @@ export default function App({ repository = notebookRepository }: AppProps) {
     anchor.click();
     URL.revokeObjectURL(url);
   };
+  const importProject = async (file: File) => {
+    const projectId = await repository.importArchive(file);
+    await refresh('');
+    setQuery('');
+    setSelectedId(projectId);
+  };
 
   return (
     <div className="app-shell">
@@ -65,6 +71,7 @@ export default function App({ repository = notebookRepository }: AppProps) {
           onDuplicate={async (project) => { await repository.duplicate(project.id); await refresh(); }}
           onDelete={async (project) => { await repository.softDelete(project.id); await refresh(); }}
           onExport={(project) => { void exportProject(project); }}
+          onImport={importProject}
         />}
         {view === 'collect' && <CollectView repository={repository} onCancel={() => setView('library')} onCreated={openProject} />}
         {view === 'editor' && selectedId && <EditorView projectId={selectedId} repository={repository} onBack={() => { setView('library'); void refresh(); }} onChanged={() => { void refresh(); }} />}

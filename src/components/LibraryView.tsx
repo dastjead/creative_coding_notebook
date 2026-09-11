@@ -12,6 +12,7 @@ interface LibraryViewProps {
   onDuplicate(project: ProjectRecord): void;
   onDelete(project: ProjectRecord): void;
   onExport(project: ProjectRecord): void;
+  onImport(file: File): Promise<void>;
 }
 
 export function LibraryView(props: LibraryViewProps) {
@@ -27,7 +28,20 @@ export function LibraryView(props: LibraryViewProps) {
 
       <div className="library-tools">
         <label className="search-field"><Icon name="search" /><span className="sr-only">라이브러리 검색</span><input aria-label="라이브러리 검색" value={props.query} onChange={(event) => props.onQuery(event.target.value)} placeholder="제목, 코드, 태그, 출처…" /></label>
-        <p>LOCAL / OFFLINE READY</p>
+        <label className="archive-import">
+          <Icon name="upload" size={17} />
+          <span>ZIP 가져오기</span>
+          <input
+            className="sr-only"
+            type="file"
+            accept=".zip,application/zip"
+            aria-label="프로젝트 ZIP 가져오기"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) void props.onImport(file).finally(() => { event.target.value = ''; });
+            }}
+          />
+        </label>
       </div>
 
       {props.projects.length === 0 ? (

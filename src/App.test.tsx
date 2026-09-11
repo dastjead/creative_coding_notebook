@@ -49,4 +49,22 @@ describe('Notebook app', () => {
       expect((await repository.getProject(first.project.id))?.favorite).toBe(true);
     });
   });
+
+  it('imports a notebook archive into the library', async () => {
+    const original = await repository.create({
+      title: 'Portable orbit',
+      code: 'void main(){gl_FragColor=vec4(1.);}',
+      profileId: 'glsl-webgl2',
+    });
+    const archive = await repository.exportArchive(original.project.id);
+    await repository.softDelete(original.project.id);
+    const user = userEvent.setup();
+    render(<App repository={repository} />);
+
+    const file = new File([archive], 'portable-orbit.zip', { type: 'application/zip' });
+    await user.upload(await screen.findByLabelText('프로젝트 ZIP 가져오기'), file);
+
+    expect(await screen.findByText('Portable orbit')).toBeInTheDocument();
+    expect((await repository.list())).toHaveLength(1);
+  });
 });

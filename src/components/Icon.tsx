@@ -1,5 +1,5 @@
 interface IconProps {
-  name: 'archive' | 'plus' | 'play' | 'stop' | 'reset' | 'camera' | 'search' | 'settings' | 'star' | 'copy' | 'download' | 'trash' | 'code';
+  name: 'archive' | 'plus' | 'play' | 'stop' | 'reset' | 'camera' | 'search' | 'settings' | 'star' | 'copy' | 'download' | 'upload' | 'trash' | 'code';
   size?: number;
 }
 
@@ -15,6 +15,7 @@ const paths: Record<IconProps['name'], React.ReactNode> = {
   star: <path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 3Z"/>,
   copy: <><rect x="8" y="8" width="11" height="11" rx="1"/><path d="M16 8V5H5v11h3"/></>,
   download: <><path d="M12 3v12m-5-5 5 5 5-5"/><path d="M5 20h14"/></>,
+  upload: <><path d="M12 16V4m-5 5 5-5 5 5"/><path d="M5 20h14"/></>,
   trash: <><path d="M5 7h14M9 7V4h6v3m2 0-1 13H8L7 7"/><path d="M10 11v5m4-5v5"/></>,
   code: <><path d="m9 6-6 6 6 6m6-12 6 6-6 6"/><path d="m14 4-4 16"/></>,
 };

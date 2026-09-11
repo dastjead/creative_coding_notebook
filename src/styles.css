@@ -42,6 +42,7 @@ main { padding: 0 18px; }
 .new-experiment svg { margin: auto; }
 .library-tools { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 0; border-top: 1px solid var(--ink); border-bottom: 1px solid var(--ink); }
 .library-tools > p { display: none; margin: 0; font-size: 9px; letter-spacing: .12em; }
+.archive-import { min-height: 40px; padding: 0 12px; border-left: 1px solid var(--ink); display: inline-flex; align-items: center; gap: 8px; flex: 0 0 auto; font: 500 9px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
 .search-field { flex: 1; display: flex; align-items: center; gap: 8px; }
 .search-field input { min-width: 0; width: 100%; border: 0; background: transparent; padding: 8px 0; font-size: 12px; }
 .search-field input::placeholder { color: #928c7e; }
@@ -54,6 +55,10 @@ main { padding: 0 18px; }
 .primary-button svg { color: var(--acid); }
 .primary-button:disabled { opacity: .35; cursor: not-allowed; }
 .secondary-button { background: transparent; }
+.sync-form { margin-top: 16px; display: grid; gap: 10px; }
+.sync-form label { display: grid; gap: 6px; font: 500 10px/1.2 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.sync-form input { min-height: 44px; border: 1px solid var(--ink); border-radius: 0; background: var(--paper); padding: 0 12px; font: 400 14px/1 var(--mono); }
+.sync-message { min-height: 1.4em; color: var(--vermilion); font: 500 11px/1.4 var(--mono); }
 
 .contact-sheet { display: grid; grid-template-columns: 1fr; gap: 1px; background: var(--ink); border: 1px solid var(--ink); margin-top: 18px; }
 .project-card { background: var(--paper); animation: cardIn .5s both; animation-delay: var(--delay); }

@@ -29,6 +29,28 @@ interface ArchiveManifest {
   captures: Array<Omit<CaptureRecord, 'blob'> & { path: string }>;
 }
 
+export type RepositoryMutation =
+  | {
+      channel: 'metadata';
+      project: ProjectRecord;
+      originalSource?: OriginalSource;
+      revision?: Revision;
+    }
+  | {
+      channel: 'media';
+      kind: 'asset';
+      record: AssetRecord;
+    }
+  | {
+      channel: 'media';
+      kind: 'capture';
+      record: CaptureRecord;
+    };
+
+export interface RepositoryObserver {
+  record(mutation: RepositoryMutation): Promise<void>;
+}
+
 class NotebookDatabase extends Dexie {
   projects!: EntityTable<ProjectRecord, 'id'>;
   originalSources!: EntityTable<OriginalSource, 'id'>;
@@ -63,7 +85,7 @@ export interface ProjectRepository {
 export class DexieProjectRepository implements ProjectRepository {
   private readonly db: NotebookDatabase;
 
-  constructor(name = 'creative-coding-notebook') {
+  constructor(name = 'creative-coding-notebook', private readonly observer?: RepositoryObserver) {
     this.db = new NotebookDatabase(name);
   }
 
@@ -73,6 +95,12 @@ export class DexieProjectRepository implements ProjectRepository {
       await this.db.projects.add(aggregate.project);
       await this.db.originalSources.add(aggregate.originalSource);
       await this.db.revisions.add(aggregate.initialRevision);
+    });
+    await this.notify({
+      channel: 'metadata',
+      project: aggregate.project,
+      originalSource: aggregate.originalSource,
+      revision: aggregate.initialRevision,
     });
     return aggregate;
   }
@@ -107,6 +135,7 @@ export class DexieProjectRepository implements ProjectRepository {
     };
     next.searchText = projectSearchText(next, source);
     await this.db.projects.put(next);
+    await this.notify({ channel: 'metadata', project: next });
     return next;
   }
 
@@ -120,6 +149,11 @@ export class DexieProjectRepository implements ProjectRepository {
         status: 'running',
         updatedAt: defaultDomainContext.now(),
       });
+    });
+    await this.notify({
+      channel: 'metadata',
+      project: { ...project, currentRevisionId: revision.id, status: 'running', updatedAt: defaultDomainContext.now() },
+      revision,
     });
     return revision;
   }
@@ -136,6 +170,8 @@ export class DexieProjectRepository implements ProjectRepository {
       if (result === 'success') update.lastSuccessfulRevisionId = revisionId;
       await this.db.projects.update(revision.projectId, update);
     });
+    const project = await this.requireProject(revision.projectId);
+    await this.notify({ channel: 'metadata', project, revision: { ...revision, result } });
   }
 
   async restoreLastSuccessful(projectId: string): Promise<ProjectRecord | undefined> {
@@ -151,6 +187,7 @@ export class DexieProjectRepository implements ProjectRepository {
       deletedAt: defaultDomainContext.now(),
       updatedAt: defaultDomainContext.now(),
     });
+    await this.notify({ channel: 'metadata', project: await this.requireProject(projectId) });
   }
 
   async duplicate(projectId: string): Promise<ProjectAggregate> {
@@ -174,6 +211,7 @@ export class DexieProjectRepository implements ProjectRepository {
       createdAt: defaultDomainContext.now(),
     };
     await this.db.captures.add(capture);
+    await this.notify({ channel: 'media', kind: 'capture', record: capture });
     return capture;
   }
 
@@ -184,6 +222,7 @@ export class DexieProjectRepository implements ProjectRepository {
   async addAsset(input: Omit<AssetRecord, 'id' | 'createdAt'>): Promise<AssetRecord> {
     const asset: AssetRecord = { ...input, id: defaultDomainContext.id(), createdAt: defaultDomainContext.now() };
     await this.db.assets.add(asset);
+    await this.notify({ channel: 'media', kind: 'asset', record: asset });
     return asset;
   }
 
@@ -221,7 +260,7 @@ export class DexieProjectRepository implements ProjectRepository {
   }
 
   async importArchive(blob: Blob): Promise<string> {
-    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    const zip = await JSZip.loadAsync(await readBlobArrayBuffer(blob));
     const manifestFile = zip.file('manifest.json');
     if (!manifestFile) throw new Error('Archive is missing manifest.json');
     const manifest = JSON.parse(await manifestFile.async('text')) as ArchiveManifest;
@@ -281,6 +320,10 @@ export class DexieProjectRepository implements ProjectRepository {
         });
       }
     });
+    await this.notify({ channel: 'metadata', project, originalSource: source });
+    for (const revision of revisions) {
+      await this.notify({ channel: 'metadata', project, revision });
+    }
     return projectId;
   }
 
@@ -300,6 +343,14 @@ export class DexieProjectRepository implements ProjectRepository {
     if (!source) throw new Error(`Original source not found: ${projectId}`);
     return source;
   }
+
+  private async notify(mutation: RepositoryMutation) {
+    try {
+      await this.observer?.record(mutation);
+    } catch {
+      // The local commit is authoritative. Sync/outbox failures must never undo it.
+    }
+  }
 }
 
 function safeName(value: string) {
@@ -309,4 +360,14 @@ function safeName(value: string) {
 async function zipBlob(file: JSZip.JSZipObject, mimeType: string): Promise<Blob> {
   const bytes = await file.async('uint8array');
   return new Blob([Uint8Array.from(bytes).buffer], { type: mimeType });
+}
+
+async function readBlobArrayBuffer(blob: Blob): Promise<ArrayBuffer> {
+  if (typeof blob.arrayBuffer === 'function') return blob.arrayBuffer();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error ?? new Error('Could not read archive'));
+    reader.onload = () => resolve(reader.result as ArrayBuffer);
+    reader.readAsArrayBuffer(blob);
+  });
 }
