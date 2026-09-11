@@ -2,13 +2,13 @@
 
 작성 기준일: 2026년 9월 12일  
 기준 브랜치: `main`  
-기준 커밋: `5f24b22`
+기준 구현 커밋: `88104d3`
 
 ## 문서 목적
 
 이 문서는 모바일 크리에이티브 코딩 노트북이 기획 문서에서 현재 구현 상태에 이르기까지 어떤 결정을 거쳤고, 무엇을 구현·검증했으며, 개발 중 발견한 문제를 어떻게 해결했는지 기록한다. 현재 코드를 인수인계하거나 다음 개발 단계의 출발점을 확인할 때 이 문서를 먼저 읽는다.
 
-현재 결론은 다음과 같다. 로컬 우선 PWA의 주요 기능과 선택적 Supabase 동기화 기반 코드는 구현되었고 자동화 검증도 통과했다. 다만 실제 iOS 26+ iPhone에서의 무한 루프 복구, 메모리 압박, 홈 화면 PWA 오프라인 재시작과 실제 Supabase 프로젝트의 RLS 검증은 아직 수행하지 않았다. 따라서 코드는 로컬 MVP 기준선에 도달했지만 기기 릴리스 게이트와 클라우드 운영 게이트는 열려 있다.
+현재 결론은 다음과 같다. 로컬 우선 PWA의 주요 기능과 선택적 Supabase 동기화 기반 코드는 구현되었고 자동화 검증도 통과했다. GitHub Pages HTTPS staging 배포와 원격 Chromium/WebKit smoke test도 완료했다. 다만 실제 iOS 26+ iPhone에서의 무한 루프 복구, 메모리 압박, 홈 화면 PWA 오프라인 재시작과 실제 Supabase 프로젝트의 RLS 검증은 아직 수행하지 않았다. 따라서 코드는 로컬 MVP 기준선에 도달했지만 기기 릴리스 게이트와 클라우드 운영 게이트는 열려 있다.
 
 ## 출발점과 제품 요구
 
@@ -127,6 +127,19 @@ Playwright WebKit은 `context.setOffline(true)` 이후 reload 자체가 내부 �
 - 외부 fetch, popup, top navigation, runner local storage 차단을 브라우저에서 검증
 - Vitest 보안 권고를 해결하는 버전으로 갱신
 
+### 9 GitHub Pages HTTPS staging
+
+커밋 `88104d3`에서 GitHub Pages 프로젝트 경로 배포를 추가했다.
+
+- public 저장소 `dastjead/creative_coding_notebook` 생성
+- `/creative_coding_notebook/` Vite base와 PWA scope 적용
+- sandbox iframe의 `runner.html` 경로를 배포 base에 연결
+- `main` push 시 type check, 단위 테스트, production build를 거치는 Pages workflow 추가
+- GitHub Pages의 HTTPS와 asset CORS 응답 확인
+- 공개 URL의 Chromium/WebKit에서 service worker 준비와 GLSL runner canvas smoke test 통과
+
+Staging URL은 <https://dastjead.github.io/creative_coding_notebook/>이다.
+
 ## 개발 중 확인한 문제와 해결
 
 | 문제 | 관찰된 증상 | 해결 | 남은 확인 |
@@ -169,6 +182,8 @@ Playwright WebKit은 `context.setOffline(true)` 이후 reload 자체가 내부 �
 | Chromium/WebKit runner 보안 경계 | 통과 |
 | `npm audit --audit-level=moderate` | 취약점 0건 |
 | 390 × 844 시각 점검 | 수집, 실행, 라이브러리 화면 확인 |
+| GitHub Pages workflow | type check, 35개 테스트, build, deploy 통과 |
+| 원격 HTTPS smoke test | Chromium/WebKit service worker와 GLSL runner 통과 |
 
 production build에는 고정 runtime이 포함되어 p5.js와 three.js chunk가 크다는 경고가 남는다. 이는 현재 오프라인 실행 계약에 따른 것으로 build 실패는 아니며, 후속 단계에서 설치 후 다운로드 전략과 lazy runtime pack을 별도로 평가한다.
 
@@ -182,12 +197,13 @@ production build에는 고정 runtime이 포함되어 p5.js와 three.js chunk가
 - 로컬 asset 전달과 외부 네트워크 차단
 - ZIP 백업과 복원
 - PWA production build와 자동화된 브라우저 회귀
+- GitHub Pages HTTPS staging과 `main` 자동 배포
 - Supabase adapter, outbox, migration, RLS 테스트 파일
 
 외부 환경이 없어 완료 판정을 유보한 범위:
 
 - iOS 26+ 실제 iPhone 복구·메모리·홈 화면 PWA 테스트
-- HTTPS staging 배포에서의 실제 설치와 update 확인
+- 실제 iPhone의 GitHub Pages 설치와 service worker update 확인
 - 실제 Supabase 프로젝트 migration 적용
 - magic-link redirect와 세션 복원
 - pgTAP RLS 실행

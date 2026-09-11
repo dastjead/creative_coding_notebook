@@ -1,7 +1,7 @@
 # 모바일 크리에이티브 코딩 노트북 전체 개발 계획
 
 작성 기준일: 2026년 9월 12일  
-현재 기준선: `main`의 `5f24b22`  
+현재 구현 기준선: `main`의 `88104d3`  
 기준 제품 문서: [Notion 프로젝트 브리프](https://app.notion.com/p/3d767b855d6781549fe3c3b20034c3d9)
 
 ## 문서 목적
@@ -44,7 +44,7 @@
 | GLSL, p5.js, three.js runner | 구현 완료 | Chromium/WebKit 통과, 실기기 미검증 |
 | PNG capture·대표 썸네일 | 구현 완료 | Chromium/WebKit 통과 |
 | 로컬 asset | 구현 완료 | `ASSETS` 전달과 누락 오류 분리 |
-| PWA·오프라인 | 구현 완료 | Chromium 자동 검증, Mobile Safari 미검증 |
+| PWA·오프라인 | 구현·Pages 배포 완료 | 원격 Chromium/WebKit 통과, Mobile Safari 미검증 |
 | runner 보안 경계 | 구현 완료 | 자동 검증 통과, 실기기 재확인 필요 |
 | Supabase client·outbox | 기반 완료 | 원격 환경 미연결 |
 | PostgreSQL·RLS·RPC | 파일 완료 | 실제 migration과 pgTAP 미실행 |
@@ -96,10 +96,12 @@ npm audit --audit-level=moderate
 
 ### 1A HTTPS staging 준비
 
-- production build를 HTTPS 정적 호스트에 배포한다.
-- `runner.html` CSP와 asset CORS가 `public/_headers`와 동일하게 적용되는지 확인한다.
-- staging commit, URL, cache version을 기록한다.
-- 설치 후 새 service worker가 적용되는 update 경로를 확인한다.
+- [x] GitHub Pages에 production build를 배포한다.
+- [x] `runner.html`의 meta CSP와 GitHub Pages asset CORS를 확인한다.
+- [x] staging commit `88104d3`과 URL을 기록한다.
+- [ ] 실제 iPhone 설치 후 새 service worker가 적용되는 update 경로를 확인한다.
+
+Staging URL: <https://dastjead.github.io/creative_coding_notebook/>
 
 ### 1B 세 profile 실제 실행
 
@@ -310,16 +312,15 @@ WebGPU는 기존 GLSL wrapper에 섞지 않는다. 기능 감지와 오류 계�
 
 다음 작업 세션에서는 아래 순서로 진행한다.
 
-1. HTTPS staging 호스트를 정하고 `main`의 production build를 배포한다.
-2. response header, runner CORS/CSP, service worker install을 확인한다.
-3. 실제 iOS 26+ iPhone에서 `docs/ios-device-validation.md`를 실행한다.
-4. 결과에 따라 PWA 유지, GLSL-only, native 셸 조기 도입 중 경로를 확정한다.
-5. 통과한 경우 실제 Supabase 프로젝트에 migration을 적용한다.
-6. pgTAP과 두 사용자 RLS negative test를 실행한다.
-7. magic-link와 단일 기기 push/pull을 연결한다.
-8. 두 기기 conflict fixture와 conflict inbox를 구현한다.
-9. 일주일 개인 사용에서 저장·검색·capture·동기화 문제를 기록한다.
-10. 관찰된 작업량을 기준으로 WebGPU milestone 일정과 범위를 산정한다.
+1. 실제 iOS 26+ iPhone에서 GitHub Pages staging과 `docs/ios-device-validation.md`를 실행한다.
+2. 홈 화면 설치, service worker update, 완전 오프라인 재시작을 확인한다.
+3. 결과에 따라 PWA 유지, GLSL-only, native 셸 조기 도입 중 경로를 확정한다.
+4. 통과한 경우 실제 Supabase 프로젝트에 migration을 적용한다.
+5. pgTAP과 두 사용자 RLS negative test를 실행한다.
+6. magic-link와 단일 기기 push/pull을 연결한다.
+7. 두 기기 conflict fixture와 conflict inbox를 구현한다.
+8. 일주일 개인 사용에서 저장·검색·capture·동기화 문제를 기록한다.
+9. 관찰된 작업량을 기준으로 WebGPU milestone 일정과 범위를 산정한다.
 
 ## 완료 정의
 

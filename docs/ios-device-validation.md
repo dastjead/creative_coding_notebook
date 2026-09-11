@@ -11,6 +11,19 @@
 - 필요 시 iPhone의 WebDriver 허용 후 연결된 Mac에서 Safari WebDriver 실행
 - 테스트 전 프로젝트 ZIP 내보내기와 기기 저장 공간 기록
 
+현재 staging: <https://dastjead.github.io/creative_coding_notebook/>
+
+## 자동 staging smoke test
+
+2026년 9월 12일, 커밋 `88104d3`의 GitHub Pages 배포에서 다음 항목을 확인했다.
+
+- HTTPS app shell, manifest, service worker 응답
+- `/creative_coding_notebook/` PWA scope와 start URL
+- runner HTML과 JavaScript asset의 CORS 응답
+- 원격 Chromium/WebKit에서 service worker 준비와 GLSL canvas 실행
+
+이 결과는 실제 Mobile Safari와 홈 화면 PWA 검증을 대체하지 않는다.
+
 ## 프로필 행렬
 
 각 프로필에서 정상 fixture, 문법/컴파일 오류, 런타임 오류를 실행합니다. fixture는 `tests/fixtures` 아래에 있습니다.
@@ -62,7 +75,7 @@
 | 날짜/담당자 | PENDING |
 | iPhone 모델 | PENDING |
 | iOS/Safari build | PENDING |
-| staging commit | PENDING |
+| staging commit | `88104d3` |
 | 세 프로필 | PENDING |
 | 2초 hard-stop | PENDING |
 | context loss | PENDING |
