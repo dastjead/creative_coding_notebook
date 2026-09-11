@@ -8,7 +8,7 @@ import type {
   RuntimeProfileId,
 } from './types';
 
-interface CreateProjectInput {
+export interface CreateProjectInput {
   code: string;
   title?: string;
   notes?: string;
