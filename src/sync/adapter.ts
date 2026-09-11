@@ -58,7 +58,7 @@ export class SupabaseSyncAdapter implements SyncAdapter {
     const objectPath = `${authData.user.id}/${payload.path.replace(/^\/+/, '')}`;
     const { error } = await this.client.storage
       .from(payload.bucket ?? 'notebook-media')
-      .upload(objectPath, payload.blob, { contentType: payload.contentType, upsert: false });
+      .upload(objectPath, payload.blob, { contentType: payload.contentType, upsert: true });
     if (error) throw error;
     if (payload.kind && payload.record) {
       const record = payload.record;

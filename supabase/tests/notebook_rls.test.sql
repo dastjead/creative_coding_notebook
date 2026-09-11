@@ -5,6 +5,11 @@ select has_table('public', 'notebook_projects', 'project table exists');
 select has_function('public', 'apply_project_mutation', array['uuid', 'uuid', 'bigint', 'jsonb'], 'optimistic mutation RPC exists');
 select policies_are('public', 'notebook_projects', array['owners manage projects'], 'projects have only the owner policy');
 
+insert into auth.users (id, email) values
+  ('11111111-1111-1111-1111-111111111111', 'owner@example.test'),
+  ('22222222-2222-2222-2222-222222222222', 'other@example.test')
+on conflict (id) do nothing;
+
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
 

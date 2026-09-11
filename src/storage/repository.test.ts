@@ -102,11 +102,48 @@ describe('DexieProjectRepository', () => {
         blob: new Blob(['png'], { type: 'image/png' }),
       });
 
-      expect(mutations.map((item) => item.channel)).toEqual(['metadata', 'metadata', 'media']);
+      expect(mutations.map((item) => item.channel)).toEqual(['metadata', 'metadata', 'media', 'metadata']);
       expect(mutations[0]).toMatchObject({ originalSource: { rawCode: 'original' } });
       expect(mutations[1]).not.toHaveProperty('originalSource');
     } finally {
       await observedRepository.destroy();
     }
+  });
+
+  it('uses captures as library covers and lets the representative capture change', async () => {
+    const created = await repository.create({ code: 'void main(){}', profileId: 'glsl-webgl2' });
+    const captureInput = {
+      projectId: created.project.id,
+      revisionId: created.initialRevision.id,
+      mimeType: 'image/png' as const,
+      width: 1,
+      height: 1,
+      pixelRatio: 1,
+    };
+    const first = await repository.addCapture({ ...captureInput, blob: new Blob(['first']) });
+    const second = await repository.addCapture({ ...captureInput, blob: new Blob(['second']) });
+
+    expect((await repository.getProject(created.project.id))?.coverCaptureId).toBe(second.id);
+    await repository.setCoverCapture(created.project.id, first.id);
+
+    expect((await repository.getProject(created.project.id))?.coverCaptureId).toBe(first.id);
+    expect((await repository.getCapture(first.id))?.blob).toBeInstanceOf(Blob);
+  });
+
+  it('stores local assets as portable binary data and restores them as blobs', async () => {
+    const created = await repository.create({ code: 'const sketch = true;', profileId: 'three-webgl' });
+    await repository.addAsset({
+      projectId: created.project.id,
+      name: 'palette.txt',
+      mimeType: 'text/plain',
+      byteLength: 7,
+      checksum: 'fixture-checksum',
+      blob: new Blob(['magenta'], { type: 'text/plain' }),
+    });
+
+    const [asset] = await repository.listAssets(created.project.id);
+
+    expect(asset.name).toBe('palette.txt');
+    expect(await asset.blob.text()).toBe('magenta');
   });
 });

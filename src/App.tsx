@@ -4,7 +4,7 @@ import { EditorView } from './components/EditorView';
 import { Icon } from './components/Icon';
 import { LibraryView } from './components/LibraryView';
 import { SettingsView } from './components/SettingsView';
-import type { ProjectRecord } from './domain/types';
+import type { CaptureRecord, ProjectRecord } from './domain/types';
 import { notebookRepository } from './storage';
 import type { DexieProjectRepository } from './storage/repository';
 
@@ -17,11 +17,19 @@ interface AppProps {
 export default function App({ repository = notebookRepository }: AppProps) {
   const [view, setView] = useState<View>('library');
   const [projects, setProjects] = useState<ProjectRecord[]>([]);
+  const [coverCaptures, setCoverCaptures] = useState<Record<string, CaptureRecord>>({});
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string>();
 
   const refresh = useCallback(async (search = query) => {
-    setProjects(await repository.list(search));
+    const listed = await repository.list(search);
+    setProjects(listed);
+    const covers = await Promise.all(listed.map(async (project) => {
+      if (!project.coverCaptureId) return undefined;
+      const capture = await repository.getCapture(project.coverCaptureId);
+      return capture ? [project.id, capture] as const : undefined;
+    }));
+    setCoverCaptures(Object.fromEntries(covers.filter((item): item is readonly [string, CaptureRecord] => Boolean(item))));
   }, [query, repository]);
 
   useEffect(() => { void refresh(); }, [refresh]);
@@ -63,6 +71,7 @@ export default function App({ repository = notebookRepository }: AppProps) {
       <main>
         {view === 'library' && <LibraryView
           projects={projects}
+          coverCaptures={coverCaptures}
           query={query}
           onQuery={search}
           onOpen={openProject}

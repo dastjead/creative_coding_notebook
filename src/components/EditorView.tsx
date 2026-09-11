@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { CaptureRecord, OriginalSource, ProjectRecord, Revision } from '../domain/types';
+import type { AssetRecord, CaptureRecord, OriginalSource, ProjectRecord, Revision } from '../domain/types';
 import { getRuntimeProfile, type NormalizedRuntimeError } from '../runtime/profiles';
 import type { RunnerEvent } from '../runtime/protocol';
 import { RunnerSession } from '../runtime/session';
@@ -18,6 +18,7 @@ export function EditorView({ projectId, repository, onBack, onChanged }: EditorV
   const [project, setProject] = useState<ProjectRecord>();
   const [original, setOriginal] = useState<OriginalSource>();
   const [captures, setCaptures] = useState<CaptureRecord[]>([]);
+  const [assets, setAssets] = useState<AssetRecord[]>([]);
   const [activePane, setActivePane] = useState<'code' | 'preview'>('code');
   const [saveState, setSaveState] = useState<'saved' | 'saving' | 'dirty'>('saved');
   const [runnerState, setRunnerState] = useState<'idle' | 'ready' | 'running' | 'error'>('idle');
@@ -29,14 +30,16 @@ export function EditorView({ projectId, repository, onBack, onChanged }: EditorV
   const revisionRef = useRef<Revision | undefined>(undefined);
 
   const load = useCallback(async () => {
-    const [nextProject, nextOriginal, nextCaptures] = await Promise.all([
+    const [nextProject, nextOriginal, nextCaptures, nextAssets] = await Promise.all([
       repository.getProject(projectId),
       repository.getOriginal(projectId),
       repository.listCaptures(projectId),
+      repository.listAssets(projectId),
     ]);
     setProject(nextProject);
     setOriginal(nextOriginal);
     setCaptures(nextCaptures);
+    setAssets(nextAssets);
   }, [projectId, repository]);
 
   useEffect(() => { void load(); }, [load]);
@@ -113,11 +116,17 @@ export function EditorView({ projectId, repository, onBack, onChanged }: EditorV
     revisionRef.current = revision;
     setRunnerState('running');
     setActivePane('preview');
-    session.current?.run(saved.profileId, saved.draftCode, { width: 390, height: 520, pixelRatio: Math.min(window.devicePixelRatio, 1.5) });
+    const runnerAssets = await Promise.all(assets.map(async (asset) => ({
+      name: asset.name,
+      mimeType: asset.mimeType,
+      bytes: await asset.blob.arrayBuffer(),
+    })));
+    session.current?.run(saved.profileId, saved.draftCode, { width: 390, height: 520, pixelRatio: Math.min(window.devicePixelRatio, 1.5) }, runnerAssets);
   };
   const stop = async () => {
     session.current?.stop();
     if (revisionRef.current) await repository.finishRun(revisionRef.current.id, 'stopped');
+    setRunnerState('idle');
   };
   const hardReset = () => {
     session.current?.hardReset();
@@ -169,10 +178,51 @@ export function EditorView({ projectId, repository, onBack, onChanged }: EditorV
         <label>메모<textarea value={project.notes} onChange={(event) => update({ notes: event.target.value })} placeholder="이 실험에서 기억할 것…" /></label>
         <label>태그<input value={project.tags.join(', ')} onChange={(event) => update({ tags: event.target.value.split(',') })} placeholder="shader, light, field" /></label>
         <details className="original-source"><summary>변경되지 않은 원본 보기</summary><pre>{original.rawCode}</pre>{original.sourceUrl && <a href={original.sourceUrl} target="_blank" rel="noreferrer">원본 링크 열기 ↗</a>}</details>
-        {captures.length > 0 && <div className="capture-rail" aria-label="캡처">{captures.map((capture) => <img key={capture.id} src={URL.createObjectURL(capture.blob)} alt={`${project.title} 캡처`} />)}</div>}
+        <div className="asset-panel">
+          <label className="asset-import">로컬 에셋 추가<input type="file" multiple onChange={async (event) => {
+            const files = [...(event.target.files ?? [])];
+            for (const file of files) {
+              const bytes = await file.arrayBuffer();
+              await repository.addAsset({
+                projectId: project.id,
+                name: file.name,
+                mimeType: file.type || 'application/octet-stream',
+                byteLength: file.size,
+                checksum: await sha256(bytes),
+                blob: file,
+              });
+            }
+            setAssets(await repository.listAssets(project.id));
+            event.target.value = '';
+          }} /></label>
+          <p>코드에서 <code>ASSETS['파일명']</code>으로 사용합니다.</p>
+          {assets.length > 0 && <ul>{assets.map((asset) => <li key={asset.id}>{asset.name}<span>{formatBytes(asset.byteLength)}</span></li>)}</ul>}
+        </div>
+        {captures.length > 0 && <div className="capture-rail" aria-label="캡처">{captures.map((capture) => (
+          <CaptureChoice
+            key={capture.id}
+            capture={capture}
+            title={project.title}
+            selected={project.coverCaptureId === capture.id}
+            onSelect={async () => {
+              await repository.setCoverCapture(project.id, capture.id);
+              setProject(await repository.getProject(project.id));
+            }}
+          />
+        ))}</div>}
       </div>
     </section>
   );
+}
+
+function CaptureChoice({ capture, title, selected, onSelect }: { capture: CaptureRecord; title: string; selected: boolean; onSelect(): void }) {
+  const [url, setUrl] = useState('');
+  useEffect(() => {
+    const next = URL.createObjectURL(capture.blob);
+    setUrl(next);
+    return () => URL.revokeObjectURL(next);
+  }, [capture.blob]);
+  return <button type="button" className={selected ? 'selected' : ''} onClick={onSelect} aria-label={`${title} 대표 캡처로 지정`}><img src={url} alt={`${title} 캡처`} /></button>;
 }
 
 function dataUrlToBlob(dataUrl: string) {
@@ -180,4 +230,13 @@ function dataUrlToBlob(dataUrl: string) {
   const mimeType = header.match(/data:([^;]+)/)?.[1] ?? 'image/png';
   const bytes = Uint8Array.from(atob(encoded), (character) => character.charCodeAt(0));
   return new Blob([bytes], { type: mimeType });
+}
+
+async function sha256(bytes: ArrayBuffer) {
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, '0')).join('');
+}
+
+function formatBytes(bytes: number) {
+  return bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KB`;
 }

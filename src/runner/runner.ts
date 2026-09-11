@@ -7,17 +7,19 @@ const params = new URLSearchParams(location.search);
 const nonce = params.get('nonce') ?? '';
 const runId = params.get('runId') ?? '';
 let cleanup: (() => void) | undefined;
+let assetUrls: string[] = [];
 let currentSize = { width: innerWidth, height: innerHeight, pixelRatio: Math.min(devicePixelRatio, 1.5) };
 
 function emit(event: RunnerEventPayload) {
   parent.postMessage({ ...event, channel: RUNNER_CHANNEL, nonce, runId }, '*');
 }
 
-function fail(error: unknown, category: NormalizedRuntimeError['category'] = 'javascript') {
+function fail(error: unknown, category?: NormalizedRuntimeError['category']) {
   const candidate = error instanceof Error ? error : new Error(String(error));
+  const resolvedCategory = category ?? (candidate.name === 'AssetError' ? 'asset' : 'javascript');
   emit({
     type: 'ERROR',
-    error: { category, message: candidate.message, raw: candidate.stack },
+    error: { category: resolvedCategory, message: candidate.message, raw: candidate.stack },
   });
 }
 
@@ -25,9 +27,12 @@ function resetDocument() {
   cleanup?.();
   cleanup = undefined;
   document.body.replaceChildren();
+  assetUrls.forEach((url) => URL.revokeObjectURL(url));
+  assetUrls = [];
   Object.assign(document.body.style, { margin: '0', overflow: 'hidden', background: '#10100f' });
   delete (window as Window & { setup?: unknown }).setup;
   delete (window as Window & { draw?: unknown }).draw;
+  delete (window as Window & { ASSETS?: unknown }).ASSETS;
 }
 
 window.addEventListener('error', (event) => {
@@ -42,13 +47,14 @@ window.addEventListener('message', (event: MessageEvent<RunnerCommand>) => {
   if (command.type === 'RUN') {
     currentSize = { width: command.width, height: command.height, pixelRatio: Math.min(command.pixelRatio, 2) };
     resetDocument();
+    installAssets(command.assets ?? []);
     try {
       if (command.profileId === 'glsl-webgl2') cleanup = runGlsl(command.code);
       if (command.profileId === 'p5-webgl') cleanup = runP5(command.code);
       if (command.profileId === 'three-webgl') cleanup = runThree(command.code);
       emit({ type: 'STARTED' });
     } catch (error) {
-      fail(error, command.profileId === 'glsl-webgl2' ? 'shader' : 'javascript');
+      fail(error, command.profileId === 'glsl-webgl2' ? 'shader' : undefined);
     }
   }
   if (command.type === 'STOP') {
@@ -67,8 +73,9 @@ setInterval(() => emit({ type: 'HEARTBEAT' }), 500);
 emit({ type: 'READY' });
 
 function runP5(code: string) {
-  const evaluate = new Function('window', `${code}\n;window.setup = typeof setup === 'function' ? setup : undefined;window.draw = typeof draw === 'function' ? draw : undefined;`);
-  evaluate(window);
+  const assets = (window as Window & { ASSETS?: Readonly<Record<string, string>> }).ASSETS ?? {};
+  const evaluate = new Function('window', 'ASSETS', `${code}\n;window.setup = typeof setup === 'function' ? setup : undefined;window.draw = typeof draw === 'function' ? draw : undefined;`);
+  evaluate(window, assets);
   const GlobalP5 = P5 as unknown as new () => P5;
   const instance = new GlobalP5();
   return () => instance.remove();
@@ -76,12 +83,32 @@ function runP5(code: string) {
 
 function runThree(code: string) {
   (window as Window & { THREE?: typeof THREE }).THREE = THREE;
-  const evaluate = new Function('THREE', code);
-  evaluate(THREE);
+  const assets = (window as Window & { ASSETS?: Readonly<Record<string, string>> }).ASSETS ?? {};
+  const evaluate = new Function('THREE', 'ASSETS', code);
+  evaluate(THREE, assets);
   resizeFirstCanvas();
   return () => {
     delete (window as Window & { THREE?: typeof THREE }).THREE;
   };
+}
+
+function installAssets(assets: NonNullable<Extract<RunnerCommand, { type: 'RUN' }>['assets']>) {
+  const entries = assets.map((asset) => {
+    const url = URL.createObjectURL(new Blob([asset.bytes], { type: asset.mimeType }));
+    assetUrls.push(url);
+    return [asset.name, url] as const;
+  });
+  const urls = Object.freeze(Object.fromEntries(entries));
+  (window as Window & { ASSETS?: Readonly<Record<string, string>> }).ASSETS = new Proxy(urls, {
+    get(target, property, receiver) {
+      if (typeof property === 'string' && !(property in target)) {
+        const error = new Error(`로컬 에셋을 찾을 수 없습니다: ${property}`);
+        error.name = 'AssetError';
+        throw error;
+      }
+      return Reflect.get(target, property, receiver);
+    },
+  });
 }
 
 function runGlsl(code: string) {

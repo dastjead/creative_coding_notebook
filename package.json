@@ -22,13 +22,14 @@
     "@supabase/supabase-js": "^2.57.4",
     "dexie": "^4.2.0",
     "jszip": "^3.10.1",
-    "p5": "^1.11.10",
+    "p5": "1.11.10",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "three": "^0.180.0"
+    "three": "0.180.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",
+    "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.8.0",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
@@ -43,6 +44,6 @@
     "typescript": "^5.9.2",
     "vite": "^7.1.5",
     "vite-plugin-pwa": "^1.0.3",
-    "vitest": "^3.2.4"
+    "vitest": "^4.1.11"
   }
 }

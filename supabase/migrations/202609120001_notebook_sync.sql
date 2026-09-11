@@ -11,6 +11,7 @@ create table public.notebook_projects (
   draft_code text not null default '',
   current_revision_id uuid,
   last_successful_revision_id uuid,
+  cover_capture_id uuid,
   run_status text not null default 'draft' check (run_status in ('draft', 'running', 'success', 'error', 'stopped')),
   server_revision bigint not null default 1,
   deleted_at timestamptz,
@@ -88,6 +89,8 @@ create policy "owners manage media metadata" on public.notebook_media
   for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy "owners read mutation receipts" on public.notebook_sync_mutations
   for select to authenticated using (user_id = auth.uid());
+create policy "owners insert mutation receipts" on public.notebook_sync_mutations
+  for insert to authenticated with check (user_id = auth.uid());
 
 create or replace function public.reject_original_source_mutation()
 returns trigger language plpgsql as $$
@@ -144,7 +147,7 @@ begin
     end if;
     insert into public.notebook_projects (
       id, user_id, title, notes, tags, favorite, profile_id, draft_code,
-      current_revision_id, last_successful_revision_id, run_status, deleted_at, created_at, updated_at
+      current_revision_id, last_successful_revision_id, cover_capture_id, run_status, deleted_at, created_at, updated_at
     ) values (
       p_project_id, v_user_id,
       coalesce(v_project_payload ->> 'title', 'Untitled experiment'),
@@ -155,6 +158,7 @@ begin
       coalesce(v_project_payload ->> 'draftCode', ''),
       nullif(v_project_payload ->> 'currentRevisionId', '')::uuid,
       nullif(v_project_payload ->> 'lastSuccessfulRevisionId', '')::uuid,
+      nullif(v_project_payload ->> 'coverCaptureId', '')::uuid,
       coalesce(v_project_payload ->> 'status', 'draft'),
       nullif(v_project_payload ->> 'deletedAt', '')::timestamptz,
       coalesce(nullif(v_project_payload ->> 'createdAt', '')::timestamptz, now()),
@@ -170,6 +174,7 @@ begin
       draft_code = coalesce(v_project_payload ->> 'draftCode', draft_code),
       current_revision_id = coalesce(nullif(v_project_payload ->> 'currentRevisionId', '')::uuid, current_revision_id),
       last_successful_revision_id = coalesce(nullif(v_project_payload ->> 'lastSuccessfulRevisionId', '')::uuid, last_successful_revision_id),
+      cover_capture_id = coalesce(nullif(v_project_payload ->> 'coverCaptureId', '')::uuid, cover_capture_id),
       run_status = coalesce(v_project_payload ->> 'status', run_status),
       deleted_at = case when v_project_payload ? 'deletedAt' then nullif(v_project_payload ->> 'deletedAt', '')::timestamptz else deleted_at end,
       updated_at = now(),
@@ -222,6 +227,10 @@ create policy "owners read notebook objects" on storage.objects
   using (bucket_id = 'notebook-media' and (storage.foldername(name))[1] = auth.uid()::text);
 create policy "owners insert notebook objects" on storage.objects
   for insert to authenticated
+  with check (bucket_id = 'notebook-media' and (storage.foldername(name))[1] = auth.uid()::text);
+create policy "owners update notebook objects" on storage.objects
+  for update to authenticated
+  using (bucket_id = 'notebook-media' and (storage.foldername(name))[1] = auth.uid()::text)
   with check (bucket_id = 'notebook-media' and (storage.foldername(name))[1] = auth.uid()::text);
 create policy "owners delete notebook objects" on storage.objects
   for delete to authenticated

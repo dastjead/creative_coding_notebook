@@ -29,6 +29,9 @@ interface ArchiveManifest {
   captures: Array<Omit<CaptureRecord, 'blob'> & { path: string }>;
 }
 
+type StoredAssetRecord = Omit<AssetRecord, 'blob'> & { blob: ArrayBuffer };
+type StoredCaptureRecord = Omit<CaptureRecord, 'blob'> & { blob: ArrayBuffer };
+
 export type RepositoryMutation =
   | {
       channel: 'metadata';
@@ -55,8 +58,8 @@ class NotebookDatabase extends Dexie {
   projects!: EntityTable<ProjectRecord, 'id'>;
   originalSources!: EntityTable<OriginalSource, 'id'>;
   revisions!: EntityTable<Revision, 'id'>;
-  assets!: EntityTable<AssetRecord, 'id'>;
-  captures!: EntityTable<CaptureRecord, 'id'>;
+  assets!: EntityTable<StoredAssetRecord, 'id'>;
+  captures!: EntityTable<StoredCaptureRecord, 'id'>;
 
   constructor(name: string) {
     super(name);
@@ -210,20 +213,45 @@ export class DexieProjectRepository implements ProjectRepository {
       id: defaultDomainContext.id(),
       createdAt: defaultDomainContext.now(),
     };
-    await this.db.captures.add(capture);
+    const storedBlob = await readBlobArrayBuffer(capture.blob);
+    await this.db.transaction('rw', this.db.captures, this.db.projects, async () => {
+      await this.db.captures.add({ ...capture, blob: storedBlob });
+      await this.db.projects.update(capture.projectId, {
+        coverCaptureId: capture.id,
+        updatedAt: defaultDomainContext.now(),
+      });
+    });
     await this.notify({ channel: 'media', kind: 'capture', record: capture });
+    await this.notify({ channel: 'metadata', project: await this.requireProject(capture.projectId) });
     return capture;
   }
 
+  getCapture(captureId: string): Promise<CaptureRecord | undefined> {
+    return this.db.captures.get(captureId).then((capture) => capture ? restoreCapture(capture) : undefined);
+  }
+
+  async setCoverCapture(projectId: string, captureId: string): Promise<void> {
+    const capture = await this.db.captures.get(captureId);
+    if (!capture || capture.projectId !== projectId) throw new Error('Capture does not belong to project');
+    await this.db.projects.update(projectId, { coverCaptureId: captureId, updatedAt: defaultDomainContext.now() });
+    await this.notify({ channel: 'metadata', project: await this.requireProject(projectId) });
+  }
+
   listCaptures(projectId: string): Promise<CaptureRecord[]> {
-    return this.db.captures.where('projectId').equals(projectId).reverse().sortBy('createdAt');
+    return this.db.captures.where('projectId').equals(projectId).reverse().sortBy('createdAt')
+      .then((captures) => captures.map(restoreCapture));
   }
 
   async addAsset(input: Omit<AssetRecord, 'id' | 'createdAt'>): Promise<AssetRecord> {
     const asset: AssetRecord = { ...input, id: defaultDomainContext.id(), createdAt: defaultDomainContext.now() };
-    await this.db.assets.add(asset);
+    await this.db.assets.add({ ...asset, blob: await readBlobArrayBuffer(asset.blob) });
     await this.notify({ channel: 'media', kind: 'asset', record: asset });
     return asset;
+  }
+
+  listAssets(projectId: string): Promise<AssetRecord[]> {
+    return this.db.assets.where('projectId').equals(projectId).sortBy('createdAt')
+      .then((assets) => assets.map(restoreAsset));
   }
 
   listRevisions(projectId: string): Promise<Revision[]> {
@@ -270,6 +298,7 @@ export class DexieProjectRepository implements ProjectRepository {
     const projectId = defaultDomainContext.id();
     const sourceId = defaultDomainContext.id();
     const revisionIds = new Map(manifest.revisions.map((revision) => [revision.id, defaultDomainContext.id()]));
+    const captureIds = new Map(manifest.captures.map((capture) => [capture.id, defaultDomainContext.id()]));
     const now = defaultDomainContext.now();
     const source: OriginalSource = {
       ...manifest.originalSource,
@@ -291,6 +320,9 @@ export class DexieProjectRepository implements ProjectRepository {
       lastSuccessfulRevisionId: manifest.project.lastSuccessfulRevisionId
         ? revisionIds.get(manifest.project.lastSuccessfulRevisionId)
         : undefined,
+      coverCaptureId: manifest.project.coverCaptureId
+        ? captureIds.get(manifest.project.coverCaptureId)
+        : undefined,
       deletedAt: undefined,
       createdAt: now,
       updatedAt: now,
@@ -305,7 +337,7 @@ export class DexieProjectRepository implements ProjectRepository {
         const file = zip.file(archivedAsset.path);
         if (!file) continue;
         const { path: _path, ...asset } = archivedAsset;
-        await this.db.assets.add({ ...asset, id: defaultDomainContext.id(), projectId, blob: await zipBlob(file, asset.mimeType) });
+        await this.db.assets.add({ ...asset, id: defaultDomainContext.id(), projectId, blob: await file.async('arraybuffer') });
       }
       for (const archivedCapture of manifest.captures) {
         const file = zip.file(archivedCapture.path);
@@ -313,10 +345,10 @@ export class DexieProjectRepository implements ProjectRepository {
         const { path: _path, ...capture } = archivedCapture;
         await this.db.captures.add({
           ...capture,
-          id: defaultDomainContext.id(),
+          id: captureIds.get(capture.id) ?? defaultDomainContext.id(),
           projectId,
           revisionId: revisionIds.get(capture.revisionId) ?? project.currentRevisionId,
-          blob: await zipBlob(file, 'image/png'),
+          blob: await file.async('arraybuffer'),
         });
       }
     });
@@ -357,11 +389,6 @@ function safeName(value: string) {
   return value.replace(/[^a-z0-9._-]+/gi, '-').replace(/^-+|-+$/g, '') || 'asset';
 }
 
-async function zipBlob(file: JSZip.JSZipObject, mimeType: string): Promise<Blob> {
-  const bytes = await file.async('uint8array');
-  return new Blob([Uint8Array.from(bytes).buffer], { type: mimeType });
-}
-
 async function readBlobArrayBuffer(blob: Blob): Promise<ArrayBuffer> {
   if (typeof blob.arrayBuffer === 'function') return blob.arrayBuffer();
   return new Promise((resolve, reject) => {
@@ -370,4 +397,12 @@ async function readBlobArrayBuffer(blob: Blob): Promise<ArrayBuffer> {
     reader.onload = () => resolve(reader.result as ArrayBuffer);
     reader.readAsArrayBuffer(blob);
   });
+}
+
+function restoreCapture(capture: StoredCaptureRecord): CaptureRecord {
+  return { ...capture, blob: new Blob([capture.blob], { type: capture.mimeType }) };
+}
+
+function restoreAsset(asset: StoredAssetRecord): AssetRecord {
+  return { ...asset, blob: new Blob([asset.blob], { type: asset.mimeType }) };
 }

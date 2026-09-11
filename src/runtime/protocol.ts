@@ -3,8 +3,14 @@ import type { NormalizedRuntimeError } from './profiles';
 
 export const RUNNER_CHANNEL = 'creative-notebook-runner' as const;
 
+export interface RunnerAsset {
+  name: string;
+  mimeType: string;
+  bytes: ArrayBuffer;
+}
+
 export type RunnerCommand =
-  | { channel: typeof RUNNER_CHANNEL; type: 'RUN'; nonce: string; runId: string; profileId: RuntimeProfileId; code: string; width: number; height: number; pixelRatio: number }
+  | { channel: typeof RUNNER_CHANNEL; type: 'RUN'; nonce: string; runId: string; profileId: RuntimeProfileId; code: string; width: number; height: number; pixelRatio: number; assets?: RunnerAsset[] }
   | { channel: typeof RUNNER_CHANNEL; type: 'STOP' | 'RESET' | 'CAPTURE'; nonce: string; runId: string }
   | { channel: typeof RUNNER_CHANNEL; type: 'RESIZE'; nonce: string; runId: string; width: number; height: number; pixelRatio: number };
 

@@ -1,9 +1,11 @@
-import type { ProjectRecord } from '../domain/types';
+import { useEffect, useState } from 'react';
+import type { CaptureRecord, ProjectRecord } from '../domain/types';
 import { runtimeProfiles } from '../runtime/profiles';
 import { Icon } from './Icon';
 
 interface LibraryViewProps {
   projects: ProjectRecord[];
+  coverCaptures: Record<string, CaptureRecord>;
   query: string;
   onQuery(value: string): void;
   onOpen(projectId: string): void;
@@ -58,7 +60,7 @@ export function LibraryView(props: LibraryViewProps) {
             return (
               <article className="project-card" key={project.id} style={{ '--delay': `${index * 45}ms` } as React.CSSProperties}>
                 <button type="button" className="card-open" onClick={() => props.onOpen(project.id)}>
-                  <div className={`card-visual visual-${index % 4}`}><span>{String(index + 1).padStart(2, '0')}</span><i /></div>
+                  <ProjectVisual capture={props.coverCaptures[project.id]} index={index} />
                   <div className="card-copy">
                     <p>{profile.label} · {new Date(project.updatedAt).toLocaleDateString('ko-KR')}</p>
                     <h2>{project.title}</h2>
@@ -77,5 +79,21 @@ export function LibraryView(props: LibraryViewProps) {
         </div>
       )}
     </section>
+  );
+}
+
+function ProjectVisual({ capture, index }: { capture?: CaptureRecord; index: number }) {
+  const [url, setUrl] = useState<string>();
+  useEffect(() => {
+    if (!capture) { setUrl(undefined); return; }
+    const next = URL.createObjectURL(capture.blob);
+    setUrl(next);
+    return () => URL.revokeObjectURL(next);
+  }, [capture]);
+  return (
+    <div className={`card-visual visual-${index % 4}`}>
+      <span>{String(index + 1).padStart(2, '0')}</span>
+      {url ? <img src={url} alt="대표 캡처" /> : <i />}
+    </div>
   );
 }

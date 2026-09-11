@@ -13,6 +13,7 @@ export interface ProjectRecord {
   draftCode: string;
   currentRevisionId: string;
   lastSuccessfulRevisionId?: string;
+  coverCaptureId?: string;
   status: RunStatus;
   searchText: string;
   createdAt: string;
