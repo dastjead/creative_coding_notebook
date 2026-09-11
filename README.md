@@ -75,6 +75,8 @@ Supabase SQL은 아직 특정 원격 프로젝트에 적용되지 않았습니�
 - [`src/components`](src/components): 수집함, 라이브러리, 편집기/미리보기, 설정
 - [`src/sync`](src/sync): 비활성/Supabase adapter, 영속 outbox, repository observer
 - [`tests/fixtures`](tests/fixtures): 정상·오류·무한 루프·context loss·누락 asset 기기 검증 샘플
+- [`docs/development-history.md`](docs/development-history.md): 기획부터 현재 기준선까지의 결정, 구현, 문제 해결과 검증 기록
+- [`docs/project-master-plan.md`](docs/project-master-plan.md): 실제 iPhone 검증부터 동기화·WebGPU·조건부 네이티브 셸까지의 전체 실행 계획
 - [`docs/superpowers/specs/2026-09-12-mobile-creative-coding-notebook-design.md`](docs/superpowers/specs/2026-09-12-mobile-creative-coding-notebook-design.md): 설계 계약
 
 ## 확인된 것과 남은 게이트
