@@ -105,7 +105,7 @@ export class RunnerSession {
     frame.title = 'Creative code preview';
     frame.setAttribute('sandbox', 'allow-scripts');
     const params = new URLSearchParams({ nonce: this.nonce, runId: this.runId });
-    frame.src = `/runner.html?${params}`;
+    frame.src = `${import.meta.env.BASE_URL}runner.html?${params}`;
     frame.referrerPolicy = 'no-referrer';
     this.container.replaceChildren(frame);
     this.frame = frame;

@@ -26,6 +26,14 @@ npm run dev
 
 같은 Wi-Fi의 iPhone에서 접속할 때는 개발 Mac의 LAN 주소와 Vite가 표시한 포트를 사용합니다. 카메라·PWA·서비스 워커 등 보안 컨텍스트 기능은 배포된 HTTPS 환경이나 로컬호스트에서 검증해야 합니다.
 
+## iPhone에서 설치하기
+
+GitHub Pages 배포가 완료되면 Safari에서 아래 주소를 엽니다.
+
+<https://dastjead.github.io/creative_coding_notebook/>
+
+Safari의 공유 버튼에서 **홈 화면에 추가**를 선택하면 Fieldnote를 standalone PWA로 실행할 수 있습니다. 첫 실행은 온라인 상태에서 완료한 뒤 System 화면에서 persistent storage 상태를 확인하세요. GitHub Actions는 `main`에 push할 때 type check와 단위 테스트를 통과한 production build만 Pages에 배포합니다.
+
 검증 명령:
 
 ```bash
