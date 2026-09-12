@@ -8,6 +8,7 @@ const nonce = params.get('nonce') ?? '';
 const runId = params.get('runId') ?? '';
 let cleanup: (() => void) | undefined;
 let assetUrls: string[] = [];
+let renderProbe = 0;
 let currentSize = { width: innerWidth, height: innerHeight, pixelRatio: Math.min(devicePixelRatio, 1.5) };
 
 function emit(event: RunnerEventPayload) {
@@ -24,6 +25,8 @@ function fail(error: unknown, category?: NormalizedRuntimeError['category']) {
 }
 
 function resetDocument() {
+  if (renderProbe) cancelAnimationFrame(renderProbe);
+  renderProbe = 0;
   cleanup?.();
   cleanup = undefined;
   document.body.replaceChildren();
@@ -53,6 +56,7 @@ window.addEventListener('message', (event: MessageEvent<RunnerCommand>) => {
       if (command.profileId === 'p5-webgl') cleanup = runP5(command.code);
       if (command.profileId === 'three-webgl') cleanup = runThree(command.code);
       emit({ type: 'STARTED' });
+      emitWhenCanvasIsPainted();
     } catch (error) {
       fail(error, command.profileId === 'glsl-webgl2' ? 'shader' : undefined);
     }
@@ -71,6 +75,21 @@ window.addEventListener('message', (event: MessageEvent<RunnerCommand>) => {
 
 setInterval(() => emit({ type: 'HEARTBEAT' }), 500);
 emit({ type: 'READY' });
+
+function emitWhenCanvasIsPainted() {
+  let sawCanvas = false;
+  const probe = () => {
+    const hasCanvas = Boolean(document.querySelector('canvas'));
+    if (hasCanvas && sawCanvas) {
+      renderProbe = 0;
+      emit({ type: 'RENDERED' });
+      return;
+    }
+    sawCanvas = hasCanvas;
+    renderProbe = requestAnimationFrame(probe);
+  };
+  renderProbe = requestAnimationFrame(probe);
+}
 
 function runP5(code: string) {
   const assets = (window as Window & { ASSETS?: Readonly<Record<string, string>> }).ASSETS ?? {};

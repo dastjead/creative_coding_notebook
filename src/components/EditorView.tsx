@@ -10,6 +10,8 @@ import { Icon } from './Icon';
 interface EditorViewProps {
   projectId: string;
   repository: DexieProjectRepository;
+  autoRun?: boolean;
+  onAutoRunConsumed?(): void;
   onBack(): void;
   onChanged(): void;
 }
@@ -29,7 +31,7 @@ const errorLabels: Record<NormalizedRuntimeError['category'], string> = {
   security: '보안 제한',
 };
 
-export function EditorView({ projectId, repository, onBack, onChanged }: EditorViewProps) {
+export function EditorView({ projectId, repository, autoRun = false, onAutoRunConsumed = () => undefined, onBack, onChanged }: EditorViewProps) {
   const [project, setProject] = useState<ProjectRecord>();
   const [original, setOriginal] = useState<OriginalSource>();
   const [captures, setCaptures] = useState<CaptureRecord[]>([]);
@@ -44,6 +46,10 @@ export function EditorView({ projectId, repository, onBack, onChanged }: EditorV
   const session = useRef<RunnerSession | undefined>(undefined);
   const projectRef = useRef<ProjectRecord | undefined>(undefined);
   const revisionRef = useRef<Revision | undefined>(undefined);
+  const runnerStartedRef = useRef(false);
+  const autoCapturePendingRef = useRef(false);
+  const captureKindRef = useRef<'auto' | 'manual' | undefined>(undefined);
+  const autoRunStartedProjectRef = useRef<string | undefined>(undefined);
 
   const load = useCallback(async () => {
     const [nextProject, nextOriginal, nextCaptures, nextAssets] = await Promise.all([
@@ -65,16 +71,34 @@ export function EditorView({ projectId, repository, onBack, onChanged }: EditorV
   const handleRunnerEvent = useCallback(async (event: RunnerEvent) => {
     if (event.type === 'READY') setRunnerState('ready');
     if (event.type === 'STARTED') {
+      runnerStartedRef.current = true;
       setRunnerState('running');
       if (revisionRef.current) await repository.finishRun(revisionRef.current.id, 'success');
     }
+    if (event.type === 'RENDERED' && runnerStartedRef.current && autoCapturePendingRef.current) {
+      autoCapturePendingRef.current = false;
+      captureKindRef.current = 'auto';
+      setFeedback('실행 화면으로 썸네일 만드는 중…');
+      session.current?.capture();
+    }
     if (event.type === 'ERROR') {
+      runnerStartedRef.current = false;
+      autoCapturePendingRef.current = false;
+      const automaticCaptureFailed = captureKindRef.current === 'auto';
+      captureKindRef.current = undefined;
       setRunnerState('error');
       setError(event.error);
+      if (automaticCaptureFailed) setFeedback('썸네일을 만들지 못했습니다. 노트는 저장되어 있습니다.');
       if (revisionRef.current) await repository.finishRun(revisionRef.current.id, 'error');
     }
-    if (event.type === 'STOPPED') setRunnerState('ready');
+    if (event.type === 'STOPPED') {
+      runnerStartedRef.current = false;
+      autoCapturePendingRef.current = false;
+      setRunnerState('ready');
+    }
     if (event.type === 'CAPTURED' && revisionRef.current) {
+      const captureKind = captureKindRef.current;
+      captureKindRef.current = undefined;
       const blob = dataUrlToBlob(event.dataUrl);
       await repository.addCapture({
         projectId,
@@ -86,7 +110,7 @@ export function EditorView({ projectId, repository, onBack, onChanged }: EditorV
         blob,
       });
       setCaptures(await repository.listCaptures(projectId));
-      setFeedback('캡처를 저장했습니다.');
+      setFeedback(captureKind === 'auto' ? '실행 화면을 썸네일로 저장했습니다.' : '캡처를 저장했습니다.');
     }
   }, [projectId, repository]);
 
@@ -110,27 +134,27 @@ export function EditorView({ projectId, repository, onBack, onChanged }: EditorV
     return () => window.clearTimeout(timeout);
   }, [onChanged, project, repository, saveState]);
 
-  if (!project || !original) return <div className="loading-state">노트 불러오는 중…</div>;
-  const profile = getRuntimeProfile(project.profileId);
-  const update = (patch: Partial<ProjectRecord>) => {
-    setProject((current) => current ? { ...current, ...patch } : current);
-    setSaveState('dirty');
-  };
-  const flush = async () => {
-    const current = projectRef.current!;
+  const flush = useCallback(async () => {
+    const current = projectRef.current;
+    if (!current) return undefined;
     setSaveState('saving');
     const saved = await repository.saveDraft(current.id, current);
     setProject(saved);
     projectRef.current = saved;
     setSaveState('saved');
     return saved;
-  };
-  const run = async () => {
+  }, [repository]);
+
+  const execute = useCallback(async (captureThumbnail: boolean) => {
     setError(undefined);
+    setFeedback(captureThumbnail ? '코드를 실행해 썸네일을 준비합니다…' : '');
     const saved = await flush();
-    const revision = await repository.startRun(project.id);
+    if (!saved) return;
+    const revision = await repository.startRun(saved.id);
     setActiveRevision(revision);
     revisionRef.current = revision;
+    runnerStartedRef.current = false;
+    autoCapturePendingRef.current = captureThumbnail;
     setRunnerState('running');
     setActivePane('preview');
     const runnerAssets = await Promise.all(assets.map(async (asset) => ({
@@ -139,14 +163,33 @@ export function EditorView({ projectId, repository, onBack, onChanged }: EditorV
       bytes: await asset.blob.arrayBuffer(),
     })));
     session.current?.run(saved.profileId, saved.draftCode, { width: 390, height: 520, pixelRatio: Math.min(window.devicePixelRatio, 1.5) }, runnerAssets);
+  }, [assets, flush, repository]);
+
+  useEffect(() => {
+    if (!autoRun || !project || !session.current || autoRunStartedProjectRef.current === project.id) return;
+    autoRunStartedProjectRef.current = project.id;
+    onAutoRunConsumed();
+    void execute(true);
+  }, [autoRun, execute, onAutoRunConsumed, project]);
+
+  if (!project || !original) return <div className="loading-state">노트 불러오는 중…</div>;
+  const profile = getRuntimeProfile(project.profileId);
+  const update = (patch: Partial<ProjectRecord>) => {
+    setProject((current) => current ? { ...current, ...patch } : current);
+    setSaveState('dirty');
   };
+  const run = () => { void execute(false); };
   const stop = async () => {
     session.current?.stop();
+    runnerStartedRef.current = false;
+    autoCapturePendingRef.current = false;
     if (revisionRef.current) await repository.finishRun(revisionRef.current.id, 'stopped');
     setRunnerState('idle');
   };
   const hardReset = () => {
     session.current?.hardReset();
+    runnerStartedRef.current = false;
+    autoCapturePendingRef.current = false;
     setRunnerState('idle');
     setFeedback('실행 환경을 재시작했습니다.');
   };
@@ -200,7 +243,7 @@ export function EditorView({ projectId, repository, onBack, onChanged }: EditorV
         <button type="button" className="run-button" onClick={run}><Icon name="play" /><span>실행</span></button>
         <button type="button" onClick={stop}><Icon name="stop" /><span>중지</span></button>
         <button type="button" aria-label="실행 환경 재시작" onClick={hardReset}><Icon name="reset" /><span>재시작</span></button>
-        <button type="button" onClick={() => { setFeedback('캡처 중…'); session.current?.capture(); }} disabled={runnerState !== 'running'}><Icon name="camera" /><span>캡처</span></button>
+        <button type="button" onClick={() => { captureKindRef.current = 'manual'; setFeedback('캡처 중…'); session.current?.capture(); }} disabled={runnerState !== 'running'}><Icon name="camera" /><span>캡처</span></button>
       </div>
 
       <p className={`editor-feedback ${feedback ? 'visible' : ''}`} role="status" aria-live="polite">{feedback}</p>

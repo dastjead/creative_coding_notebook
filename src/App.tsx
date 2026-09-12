@@ -37,6 +37,7 @@ export default function App({ repository = notebookRepository }: AppProps) {
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | undefined>(initialRoute.projectId);
   const [deletedProject, setDeletedProject] = useState<ProjectRecord>();
+  const [autoRunProjectId, setAutoRunProjectId] = useState<string>();
 
   const refresh = useCallback(async (search = query) => {
     const listed = await repository.list(search);
@@ -131,8 +132,18 @@ export default function App({ repository = notebookRepository }: AppProps) {
           onExport={(project) => { void exportProject(project); }}
           onImport={importProject}
         />}
-        {view === 'collect' && <CollectView repository={repository} onCancel={() => navigate('library')} onCreated={openProject} />}
-        {view === 'editor' && selectedId && <EditorView projectId={selectedId} repository={repository} onBack={() => { navigate('library'); void refresh(); }} onChanged={() => { void refresh(); }} />}
+        {view === 'collect' && <CollectView repository={repository} onCancel={() => navigate('library')} onCreated={(projectId) => {
+          setAutoRunProjectId(projectId);
+          openProject(projectId);
+        }} />}
+        {view === 'editor' && selectedId && <EditorView
+          projectId={selectedId}
+          repository={repository}
+          autoRun={autoRunProjectId === selectedId}
+          onAutoRunConsumed={() => setAutoRunProjectId(undefined)}
+          onBack={() => { navigate('library'); void refresh(); }}
+          onChanged={() => { void refresh(); }}
+        />}
         {view === 'settings' && <SettingsView />}
       </main>
 

@@ -91,9 +91,15 @@ function ProjectVisual({ capture, index }: { capture?: CaptureRecord; index: num
     return () => URL.revokeObjectURL(next);
   }, [capture]);
   return (
-    <div className={`card-visual visual-${index % 4}`}>
-      <span>{String(index + 1).padStart(2, '0')}</span>
-      {url ? <img src={url} alt="대표 캡처" width={capture?.width} height={capture?.height} /> : <i />}
+    <div className="card-visual">
+      <span className="card-index">{String(index + 1).padStart(2, '0')}</span>
+      {url ? <img src={url} alt="대표 캡처" width={capture?.width} height={capture?.height} /> : (
+        <div className="capture-empty">
+          <Icon name="play" size={24} />
+          <strong>실행 화면 없음</strong>
+          <small>정상 실행 후 자동으로 채워집니다</small>
+        </div>
+      )}
     </div>
   );
 }

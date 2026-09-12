@@ -11,12 +11,6 @@ interface CollectViewProps {
   onCancel(): void;
 }
 
-const starter = `void mainImage(out vec4 color, in vec2 point) {
-  vec2 uv = (point * 2.0 - iResolution.xy) / iResolution.y;
-  float glow = 0.05 / abs(length(uv) - 0.35);
-  color = vec4(glow * vec3(1.0, 0.16, 0.05), 1.0);
-}`;
-
 export function CollectView({ repository, onCreated, onCancel }: CollectViewProps) {
   const [title, setTitle] = useState('');
   const [sourceUrl, setSourceUrl] = useState('');
@@ -45,9 +39,9 @@ export function CollectView({ repository, onCreated, onCancel }: CollectViewProp
 
       <form className="collect-grid" onSubmit={(event) => { event.preventDefault(); void create(); }}>
         <div className="paper-form">
-          <label>제목<input name="note-title" autoComplete="off" aria-label="제목" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="나중에 떠올릴 수 있는 이름" /></label>
+          <label><span className="field-label">제목 <small>선택</small></span><input name="note-title" autoComplete="off" aria-label="제목 (선택)" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="비워두면 자동으로 이름을 만듭니다" /></label>
           <label>출처 URL<input name="source-url" type="url" autoComplete="url" aria-label="출처 URL" value={sourceUrl} onChange={(event) => setSourceUrl(event.target.value)} inputMode="url" placeholder="https://…" /></label>
-          <label className="code-paste-label">원본 코드<textarea name="original-code" aria-label="원본 코드" value={code} onChange={(event) => setCode(event.target.value)} placeholder={starter} spellCheck={false} /></label>
+          <label className="code-paste-label">원본 코드<textarea name="original-code" aria-label="원본 코드" value={code} onChange={(event) => setCode(event.target.value)} spellCheck={false} /></label>
         </div>
 
         <aside className="profile-ticket">

@@ -7,7 +7,7 @@ const fixture = (path: string) => readFileSync(resolve(process.cwd(), 'tests/fix
 test('collects and renders a GLSL experiment in the isolated runner', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: '새 노트' }).first().click();
-  await page.getByLabel('제목').fill('Red current');
+  await page.getByLabel(/제목/).fill('Red current');
   await page.getByLabel('출처 URL').fill('https://example.com/red');
   await page.getByLabel('원본 코드').fill(`void mainImage(out vec4 color, in vec2 point) {
     vec2 uv = point / iResolution.xy;
@@ -16,13 +16,11 @@ test('collects and renders a GLSL experiment in the isolated runner', async ({ p
   await expect(page.getByRole('heading', { name: 'GLSL / Shadertoy' })).toBeVisible();
   await page.getByRole('button', { name: '노트 만들기' }).click();
   await expect(page.getByLabel('노트 제목')).toHaveValue('Red current');
-  await page.getByRole('button', { name: '실행', exact: true }).click();
 
   const runner = page.frameLocator('iframe[title="크리에이티브 코드 미리보기"]');
   await expect(runner.locator('canvas')).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText('실행 중', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: '캡처' }).click();
-  await expect(page.getByRole('status')).toContainText('캡처를 저장했습니다.');
+  await expect(page.getByRole('status')).toContainText('실행 화면을 썸네일로 저장했습니다.');
   await page.getByText('노트 정보와 파일').click();
   const capture = page.getByAltText('Red current 캡처');
   await expect(capture).toBeVisible();
@@ -43,7 +41,7 @@ test('collects and renders a GLSL experiment in the isolated runner', async ({ p
 test('wraps and renders a twigl geekest golf body', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: '새 노트' }).first().click();
-  await page.getByLabel('제목').fill('Twigl golf');
+  await page.getByLabel('제목 (선택)').fill('Twigl golf');
   await page.getByLabel('원본 코드').fill(fixture('glsl/twigl-geekest.glsl'));
   await expect(page.getByRole('heading', { name: 'GLSL / Shadertoy' })).toBeVisible();
   await page.getByRole('button', { name: '노트 만들기' }).click();
@@ -57,7 +55,7 @@ test('wraps and renders a twigl geekest golf body', async ({ page }) => {
 test('keeps a saved project across a page reload', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: '새 노트' }).first().click();
-  await page.getByLabel('제목').fill('Persistent orbit');
+  await page.getByLabel('제목 (선택)').fill('Persistent orbit');
   await page.getByLabel('원본 코드').fill('function setup(){ createCanvas(200, 200, WEBGL); }');
   await page.getByRole('button', { name: '노트 만들기' }).click();
   await expect(page.getByLabel('노트 제목')).toHaveValue('Persistent orbit');
@@ -76,7 +74,7 @@ test('reopens the installed app shell and local archive while offline', async ({
     await navigator.serviceWorker.ready;
   });
   await page.getByRole('button', { name: '새 노트' }).first().click();
-  await page.getByLabel('제목').fill('Offline field');
+  await page.getByLabel('제목 (선택)').fill('Offline field');
   await page.getByLabel('원본 코드').fill(fixture('glsl/success.glsl'));
   await page.getByRole('button', { name: '노트 만들기' }).click();
   await page.getByRole('button', { name: '보관함', exact: true }).click();
@@ -98,7 +96,7 @@ for (const profile of [
   test(`runs the bundled ${profile.name} profile without a network dependency`, async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: '새 노트' }).first().click();
-    await page.getByLabel('제목').fill(`${profile.name} fixture`);
+    await page.getByLabel('제목 (선택)').fill(`${profile.name} fixture`);
     await page.getByLabel('원본 코드').fill(fixture(profile.path));
     await expect(page.getByRole('heading', { name: profile.suggested })).toBeVisible();
     await page.getByRole('button', { name: '노트 만들기' }).click();

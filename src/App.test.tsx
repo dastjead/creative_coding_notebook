@@ -23,7 +23,10 @@ describe('Notebook app', () => {
     await user.click((await screen.findAllByRole('button', { name: '새 노트' }))[0]);
     expect(screen.queryByRole('navigation', { name: '주 탐색' })).not.toBeInTheDocument();
     expect(window.location.hash).toBe('#/collect');
-    await user.type(screen.getByLabelText('제목'), 'Red current');
+    const codeInput = screen.getByLabelText('원본 코드');
+    expect(codeInput).toHaveValue('');
+    expect(codeInput).not.toHaveAttribute('placeholder');
+    await user.type(screen.getByLabelText('제목 (선택)'), 'Red current');
     await user.type(screen.getByLabelText('출처 URL'), 'https://example.com/red');
     fireEvent.change(screen.getByLabelText('원본 코드'), {
       target: { value: 'void mainImage(out vec4 c, in vec2 p){c=vec4(1.,0.,0.,1.);}' },
@@ -39,7 +42,11 @@ describe('Notebook app', () => {
     expect(screen.getByRole('tab', { name: /결과/ })).toHaveAttribute('aria-selected', 'true');
     expect(window.location.hash).toMatch(/^#\/note\//);
     expect(screen.getByRole('button', { name: '실행' })).toBeInTheDocument();
-    expect((await repository.list())[0]?.draftCode).toContain('mainImage');
+    const created = (await repository.list())[0]!;
+    expect(created.draftCode).toContain('mainImage');
+    await waitFor(async () => {
+      expect(await repository.listRevisions(created.id)).toHaveLength(2);
+    });
   });
 
   it('filters the library and persists favorite state', async () => {
@@ -56,6 +63,14 @@ describe('Notebook app', () => {
     await waitFor(async () => {
       expect((await repository.getProject(first.project.id))?.favorite).toBe(true);
     });
+  });
+
+  it('shows a neutral pending thumbnail instead of invented artwork before a successful run', async () => {
+    await repository.create({ title: 'Waiting field', code: 'void main(){}', profileId: 'glsl-webgl2' });
+    render(<App repository={repository} />);
+
+    expect(await screen.findByText('실행 화면 없음')).toBeInTheDocument();
+    expect(screen.queryByAltText('대표 캡처')).not.toBeInTheDocument();
   });
 
   it('imports a notebook archive into the library', async () => {

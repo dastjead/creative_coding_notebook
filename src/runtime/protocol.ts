@@ -15,7 +15,7 @@ export type RunnerCommand =
   | { channel: typeof RUNNER_CHANNEL; type: 'RESIZE'; nonce: string; runId: string; width: number; height: number; pixelRatio: number };
 
 export type RunnerEvent =
-  | { channel: typeof RUNNER_CHANNEL; type: 'READY' | 'STARTED' | 'HEARTBEAT' | 'STOPPED'; nonce: string; runId: string }
+  | { channel: typeof RUNNER_CHANNEL; type: 'READY' | 'STARTED' | 'RENDERED' | 'HEARTBEAT' | 'STOPPED'; nonce: string; runId: string }
   | { channel: typeof RUNNER_CHANNEL; type: 'CONSOLE'; nonce: string; runId: string; level: 'log' | 'warn' | 'error'; message: string }
   | { channel: typeof RUNNER_CHANNEL; type: 'ERROR'; nonce: string; runId: string; error: NormalizedRuntimeError }
   | { channel: typeof RUNNER_CHANNEL; type: 'CAPTURED'; nonce: string; runId: string; dataUrl: string; width: number; height: number };
@@ -26,7 +26,7 @@ export type RunnerEventPayload = RunnerEvent extends infer Event
     : never
   : never;
 
-const eventTypes = new Set(['READY', 'STARTED', 'HEARTBEAT', 'STOPPED', 'CONSOLE', 'ERROR', 'CAPTURED']);
+const eventTypes = new Set(['READY', 'STARTED', 'RENDERED', 'HEARTBEAT', 'STOPPED', 'CONSOLE', 'ERROR', 'CAPTURED']);
 
 export function isRunnerEvent(value: unknown, nonce: string, runId: string): value is RunnerEvent {
   if (!value || typeof value !== 'object') return false;

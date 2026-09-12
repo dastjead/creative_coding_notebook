@@ -62,7 +62,7 @@ export async function createProject(
   const project: ProjectRecord = {
     id: projectId,
     originalSourceId: sourceId,
-    title: input.title?.trim() || '제목 없는 노트',
+    title: input.title?.trim() || automaticProjectTitle(input.profileId, now),
     notes: input.notes?.trim() || '',
     tags: uniqueTags(input.tags ?? []),
     favorite: false,
@@ -77,6 +77,17 @@ export async function createProject(
   project.searchText = projectSearchText(project, originalSource);
 
   return { project, originalSource, initialRevision };
+}
+
+function automaticProjectTitle(profileId: RuntimeProfileId, timestamp: string): string {
+  const profileName: Record<RuntimeProfileId, string> = {
+    'glsl-webgl2': 'GLSL 노트',
+    'p5-webgl': 'p5.js 노트',
+    'three-webgl': 'three.js 노트',
+  };
+  const date = new Date(timestamp);
+  const twoDigits = (value: number) => String(value).padStart(2, '0');
+  return `${profileName[profileId]} · ${twoDigits(date.getMonth() + 1)}.${twoDigits(date.getDate())} ${twoDigits(date.getHours())}:${twoDigits(date.getMinutes())}`;
 }
 
 export function createRevision(

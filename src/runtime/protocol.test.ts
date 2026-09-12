@@ -13,6 +13,10 @@ describe('runner protocol validation', () => {
     expect(isRunnerEvent(event, 'nonce-a', 'run-a')).toBe(true);
   });
 
+  it('accepts the rendered signal used to time automatic captures', () => {
+    expect(isRunnerEvent({ ...event, type: 'RENDERED' }, 'nonce-a', 'run-a')).toBe(true);
+  });
+
   it('rejects stale runs and forged nonces', () => {
     expect(isRunnerEvent(event, 'nonce-b', 'run-a')).toBe(false);
     expect(isRunnerEvent(event, 'nonce-a', 'run-b')).toBe(false);
