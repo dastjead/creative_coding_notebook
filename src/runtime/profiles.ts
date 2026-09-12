@@ -99,7 +99,7 @@ export function parseShaderLog(raw: string): NormalizedRuntimeError {
   if (webgl) {
     return {
       category: 'shader',
-      message: webgl[3].trim(),
+      message: explainShaderMessage(webgl[3].trim()),
       line: Number(webgl[2]),
       raw,
     };
@@ -107,8 +107,14 @@ export function parseShaderLog(raw: string): NormalizedRuntimeError {
   const alternate = raw.match(/\b\d+\((\d+)\)\s*:\s*(.*)/);
   return {
     category: 'shader',
-    message: alternate?.[2]?.trim() || raw,
+    message: explainShaderMessage(alternate?.[2]?.trim() || raw),
     line: alternate ? Number(alternate[1]) : undefined,
     raw,
   };
+}
+
+function explainShaderMessage(message: string): string {
+  const overload = message.match(/^'([^']+)'\s*:\s*no matching overloaded function found$/i);
+  if (!overload) return message;
+  return `\`${overload[1]}\` 호출과 일치하는 함수 선언이 없습니다. 인수의 개수와 타입(vec2, vec3, float 등)을 확인하세요.`;
 }

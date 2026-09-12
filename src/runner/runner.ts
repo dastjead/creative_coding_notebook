@@ -17,10 +17,17 @@ function emit(event: RunnerEventPayload) {
 
 function fail(error: unknown, category?: NormalizedRuntimeError['category']) {
   const candidate = error instanceof Error ? error : new Error(String(error));
-  const resolvedCategory = category ?? (candidate.name === 'AssetError' ? 'asset' : 'javascript');
+  const details = candidate as Error & Partial<NormalizedRuntimeError>;
+  const resolvedCategory = category ?? details.category ?? (candidate.name === 'AssetError' ? 'asset' : 'javascript');
   emit({
     type: 'ERROR',
-    error: { category: resolvedCategory, message: candidate.message, raw: candidate.stack },
+    error: {
+      category: resolvedCategory,
+      message: candidate.message,
+      line: details.line,
+      column: details.column,
+      raw: details.raw ?? candidate.stack,
+    },
   });
 }
 

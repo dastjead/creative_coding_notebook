@@ -52,6 +52,20 @@ test('wraps and renders a twigl geekest golf body', async ({ page }) => {
   await expect(page.getByRole('alert')).toHaveCount(0);
 });
 
+test('explains a GLSL overload mismatch at the user-code line', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: '새 노트' }).first().click();
+  await page.getByLabel('원본 코드').fill(fixture('glsl/overload-error.glsl'));
+  await page.getByRole('button', { name: '노트 만들기' }).click();
+  await page.getByRole('button', { name: '실행', exact: true }).click();
+
+  const error = page.getByRole('alert');
+  await expect(error).toContainText('셰이더 오류');
+  await expect(error).toContainText('6번째 줄');
+  await expect(error).toContainText('`rotate3D` 호출과 일치하는 함수 선언이 없습니다');
+  await expect(error).toContainText('인수의 개수와 타입');
+});
+
 test('keeps a saved project across a page reload', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: '새 노트' }).first().click();
