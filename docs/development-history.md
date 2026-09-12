@@ -2,13 +2,13 @@
 
 - 작성 기준일: 2026년 9월 12일
 - 기준 브랜치: `main`
-- 기준 구현 커밋: `9560d9f`
+- 기준 구현 커밋: `bd1196e`
 
 ## 문서 목적
 
 이 문서는 모바일 크리에이티브 코딩 노트북이 기획 문서에서 현재 구현 상태에 이르기까지 어떤 결정을 거쳤고, 무엇을 구현·검증했으며, 개발 중 발견한 문제를 어떻게 해결했는지 기록한다. 현재 코드를 인수인계하거나 다음 개발 단계의 출발점을 확인할 때 이 문서를 먼저 읽는다.
 
-현재 결론은 다음과 같다. 로컬 우선 PWA의 주요 기능과 선택적 Supabase 동기화 기반 코드는 구현되었고 자동화 검증도 통과했다. GitHub Pages HTTPS staging 배포와 원격 Chromium/WebKit smoke test도 완료했다. 모바일 디자인과 한글 사용성을 전면 정리했으며, 새 노트는 제목 없이 저장할 수 있고 생성 직후 정상 실행 화면을 대표 썸네일로 자동 보존한다. 다만 실제 iOS 26+ iPhone에서의 무한 루프 복구, 메모리 압박, 홈 화면 PWA 오프라인 재시작과 실제 Supabase 프로젝트의 RLS 검증은 아직 수행하지 않았다. 따라서 코드는 로컬 MVP 기준선에 도달했지만 기기 릴리스 게이트와 클라우드 운영 게이트는 열려 있다.
+현재 결론은 다음과 같다. 로컬 우선 PWA의 주요 기능과 선택적 Supabase 동기화 기반 코드는 구현되었고 자동화 검증도 통과했다. GitHub Pages HTTPS 배포와 원격 Chromium/WebKit smoke test를 완료했으며, 사용자가 iOS 실제 기기에서 PWA의 기본 실행 성공을 확인했다. 모바일 디자인과 한글 사용성을 전면 정리했고 새 노트는 제목 없이 저장할 수 있으며 생성 직후 정상 실행 화면을 대표 썸네일로 자동 보존한다. 실제 기기의 홈 화면 설치 상태, 무한 루프 복구, 메모리 압박, 완전 오프라인 재시작 등 상세 게이트는 아직 별도 기록이 필요하다. 외부 저장소는 Supabase로 확정하지 않고 Dropbox, Google Drive 등 사용자 소유 파일 저장소까지 비교 검증하기로 했다.
 
 ## 출발점과 제품 요구
 
@@ -169,6 +169,21 @@ Staging URL은 <https://dastjead.github.io/creative_coding_notebook/>이다.
 - 아직 정상 실행하지 못한 노트는 생성형 장식 대신 `실행 화면 없음` 상태를 표시
 - 자동 실행이나 캡처가 실패해도 원본과 노트 저장은 유지
 
+### 13 iOS PWA 기본 실행 확인과 동기화 저장소 재검토
+
+사용자가 iOS 실제 기기에서 GitHub Pages PWA의 기본 동작이 성공하는 것을 확인했다. 이 결과로 PWA 경로가 유효하다는 점은 확인했지만, 홈 화면 설치 상태, 기기 모델과 iOS build, 세 프로필 오류 fixture, 2초 hard-stop, context loss, memory pressure, 완전 오프라인 재시작, ZIP 왕복은 확인 범위를 추정하지 않고 pending으로 유지한다.
+
+동기화 검토 범위도 앱 전용 백엔드에서 사용자 소유 파일 저장소로 확장했다.
+
+- Supabase: 인증, PostgreSQL, RLS, private Storage를 제공하는 앱형 후보
+- Dropbox: folder cursor, file revision과 일반 파일 구조를 활용하는 파일형 1순위 후보
+- Google Drive: Changes token과 `drive.file` scope를 활용하는 파일형 2순위 후보
+- GitHub: 원본과 revision text의 선택형 mirror 후보
+- Notion: 프로젝트 metadata와 링크의 선택형 카탈로그 후보
+- iCloud Drive: PWA가 아닌 향후 native 셸에서 재검토할 후보
+
+상세 근거, 공통 Vault 형식, adapter 계약과 검증 fixture는 [동기화 저장소 비교](sync-storage-evaluation.md)에 기록했다. 기존 Supabase 구현은 삭제하지 않고 동일 fixture의 비교 기준으로 유지한다.
+
 ## 개발 중 확인한 문제와 해결
 
 | 문제 | 관찰된 증상 | 해결 | 남은 확인 |
@@ -229,14 +244,15 @@ production build에는 고정 runtime이 포함되어 p5.js와 three.js chunk가
 - PWA production build와 자동화된 브라우저 회귀
 - GitHub Pages HTTPS staging과 `main` 자동 배포
 - Supabase adapter, outbox, migration, RLS 테스트 파일
+- iOS 실제 기기 PWA 기본 실행 확인
+- 범용 파일 저장소를 포함한 동기화 후보 비교 문서
 
 외부 환경이 없어 완료 판정을 유보한 범위:
 
-- iOS 26+ 실제 iPhone 복구·메모리·홈 화면 PWA 테스트
-- 실제 iPhone의 GitHub Pages 설치와 service worker update 확인
-- 실제 Supabase 프로젝트 migration 적용
-- magic-link redirect와 세션 복원
-- pgTAP RLS 실행
+- iOS 26+ 실제 iPhone의 상세 복구·메모리·오프라인·ZIP 게이트 기록
+- 실제 iPhone의 service worker update 확인
+- Dropbox·Google Drive·Supabase 동일 fixture 비교와 최종 provider 선택
+- 선택한 provider의 실제 인증, 새 기기 복원과 권한 negative test
 - 두 기기 동시 수정과 media retry 검증
 
-후속 작업은 [전체 개발 계획](project-master-plan.md)을 기준으로 진행한다. 실제 기기 시험 절차와 기록 표는 [iOS 기기 검증 문서](ios-device-validation.md)를 사용한다.
+후속 작업은 [다음 세션 인계](next-session-handoff.md)에서 시작하고 [전체 개발 계획](project-master-plan.md)을 기준으로 진행한다. 실제 기기 시험 절차와 기록 표는 [iOS 기기 검증 문서](ios-device-validation.md)를 사용한다.

@@ -1,14 +1,14 @@
 # 모바일 크리에이티브 코딩 노트북 전체 개발 계획
 
 - 작성 기준일: 2026년 9월 12일
-- 현재 구현 기준선: `main`의 `9560d9f`
+- 현재 구현 기준선: `main`의 `bd1196e`
 - 기준 제품 문서: [Notion 프로젝트 브리프](https://app.notion.com/p/3d767b855d6781549fe3c3b20034c3d9)
 
 ## 문서 목적
 
 이 문서는 현재 구현된 로컬 PWA 기준선과 앞으로 필요한 기기 검증, 클라우드 동기화, WebGPU 확장, 조건부 네이티브 셸을 하나의 실행 순서로 관리한다. 기존 구현 계획은 최초 구축 기록으로 유지하고, 앞으로의 우선순위와 완료 판정은 이 문서를 기준으로 갱신한다.
 
-현재 최우선 과제는 기능을 더 늘리는 것이 아니라 실제 iOS 26+ iPhone에서 실행 격리와 복구가 성립하는지 확인하는 것이다. 이 게이트 결과가 PWA 유지, JavaScript 프로필 축소, SwiftUI/WKWebView 셸 조기 도입 중 다음 경로를 결정한다. 정확한 일정 산정은 이 시험이 끝난 뒤 진행한다.
+사용자가 실제 iOS 기기에서 PWA의 기본 실행 성공을 확인했으므로 PWA 경로는 유효하다. 다만 홈 화면 설치 상태, 2초 hard-stop, context loss, memory pressure, 완전 오프라인 재시작과 ZIP 왕복의 상세 게이트는 아직 별도로 기록해야 한다. 동기화 단계에서는 Supabase를 즉시 확정하지 않고 사용자 소유 파일 저장소까지 동일 기준으로 검증한다.
 
 ## 제품 목표
 
@@ -30,7 +30,7 @@
 | 캡처 | MVP는 PNG |
 | 네트워크 | runner 외부 연결과 원격 runtime 기본 차단 |
 | 로컬 저장 | IndexedDB, persistent storage 상태 표시, ZIP 안전장치 |
-| 외부 저장 | Supabase와 email magic link를 기본 경로로 검증 |
+| 외부 저장 | Supabase, Dropbox, Google Drive를 같은 Vault 계약으로 비교한 뒤 결정 |
 | 충돌 | 마지막 쓰기 우선 금지, 양쪽 revision 보존 |
 | 후속 프로필 | Raw WGSL과 three.js WebGPU/TSL을 별도 profile로 추가 |
 
@@ -42,27 +42,27 @@
 | Dexie 로컬 저장·검색 | 완료 | 자동 테스트 통과 |
 | ZIP 내보내기·가져오기 | 완료 | 빈 저장소 왕복 테스트 통과 |
 | 코드 수집 UX | 완료 | 빈 코드 입력, 선택 제목, 자동 제목 적용 |
-| GLSL, p5.js, three.js runner | 구현 완료 | Chromium/WebKit 통과, 실기기 미검증 |
+| GLSL, p5.js, three.js runner | 구현 완료 | Chromium/WebKit 통과, iOS PWA 기본 실행 확인·상세 fixture 미기록 |
 | PNG capture·대표 썸네일 | 구현 완료 | 생성 직후 자동 실행·캡처, Chromium/WebKit 통과 |
 | 로컬 asset | 구현 완료 | `ASSETS` 전달과 누락 오류 분리 |
-| PWA·오프라인 | 구현·Pages 배포 완료 | 원격 Chromium/WebKit 통과, Mobile Safari 미검증 |
+| PWA·오프라인 | 구현·Pages 배포 완료 | iOS 실제 기기 기본 실행 확인, 완전 오프라인·복구 상세 미기록 |
 | runner 보안 경계 | 구현 완료 | 자동 검증 통과, 실기기 재확인 필요 |
-| Supabase client·outbox | 기반 완료 | 원격 환경 미연결 |
+| Supabase client·outbox | 후보 기반 완료 | 원격 환경 미연결, provider 선택 전 운영 적용 보류 |
 | PostgreSQL·RLS·RPC | 파일 완료 | 실제 migration과 pgTAP 미실행 |
 | 충돌 해결 UI | 미구현 | conflict 데이터는 보존되나 선택 화면 필요 |
 | WebGPU/WGSL/TSL | 미구현 | 기기 게이트 후 착수 |
 | SwiftUI/WKWebView 셸 | 조건부 | PWA 복구 실패 시 앞당김 |
 
-상태 해석상 로컬 MVP 코드는 완성되었지만 실제 iPhone 합격 전이므로 릴리스 가능한 로컬 MVP는 아직 완료가 아니다. Supabase 단계는 adapter와 서버 정의가 준비된 상태이며 운영 검증 전이다.
+상태 해석상 로컬 MVP 코드는 완성되었고 iOS PWA 기본 실행도 확인했다. 상세 복구 게이트와 일상 사용 검증은 남아 있으므로 전체 기기 릴리스 게이트가 완료된 것은 아니다. Supabase는 adapter와 서버 정의가 준비된 후보이며, Dropbox와 Google Drive 비교 전에는 운영 저장소로 확정하지 않는다.
 
 ## 실행 순서 개요
 
 | 단계 | 목표 | 선행 조건 | 종료 조건 |
 |---|---|---|---|
 | 0 | 자동화 기준선 유지 | 완료 | 모든 자동 검증 green |
-| 1 | iOS 실제 기기 가능성 판정 | HTTPS staging | hard stop 포함 기기 게이트 판정 |
+| 1 | iOS 실제 기기 가능성 판정 | HTTPS staging | 기본 실행 확인 후 hard stop 포함 상세 기기 게이트 판정 |
 | 2 | 로컬 MVP 릴리스 품질 확보 | 단계 1 통과 또는 경로 변경 | 개인용 일상 사용 가능 |
-| 3 | Supabase 단일 사용자 활성화 | 단계 1 결과 확정 | RLS와 재시도 포함 원격 저장 통과 |
+| 3 | 동기화 저장소 비교·선정과 단일 사용자 활성화 | iOS PWA 경로 유효 | Dropbox·Drive·Supabase 동일 fixture 비교 후 한 후보의 새 기기 복원 통과 |
 | 4 | 두 기기 동기화와 충돌 UX | 단계 3 | 양쪽 revision 보존·선택·재동기화 |
 | 5 | WebGPU 계열 profile 검증 | 단계 2 안정화 | 지원 기기별 기능 감지와 별도 profile |
 | 6 | 네이티브 셸 조건부 도입 | 명확한 PWA 한계 | 필요한 기능만 native bridge로 제공 |
@@ -163,30 +163,65 @@ Staging URL: <https://dastjead.github.io/creative_coding_notebook/>
 - 모든 로컬 자료를 내보내고 새 설치로 가져올 수 있다.
 - 새 PWA 버전 적용 후 IndexedDB와 archive 호환성이 유지된다.
 
-## 단계 3 Supabase 단일 사용자 활성화
+## 단계 3 동기화 저장소 비교·선정과 단일 사용자 활성화
 
 우선순위: P1
 
-### 환경과 보안
+상세 비교와 공식 문서 근거는 [동기화 저장소 비교 검토](sync-storage-evaluation.md)를 기준으로 한다. Supabase는 기존 구현이 있는 앱형 후보이고, Dropbox는 파일형 1순위 검증 후보, Google Drive는 파일형 2순위 검증 후보다. GitHub는 선택형 코드 mirror, Notion은 선택형 카탈로그, iCloud Drive는 native 셸 이후 후보로 둔다.
 
-- 개인 Supabase 프로젝트와 리전을 선택한다.
-- migration을 새 프로젝트에 적용한다.
-- private `notebook-media` bucket과 Storage policy를 확인한다.
-- publishable key만 브라우저에 제공하고 배포 환경의 secret 노출을 검사한다.
-- magic-link redirect URL을 staging과 production에 등록한다.
-- pgTAP 정책 테스트를 실제 데이터베이스에서 실행한다.
+### 공통 저장 계약
+
+- 읽을 수 있는 `Fieldnote Vault v1` 경로, manifest, checksum과 format version을 정의한다.
+- original과 revision은 생성 후 수정하지 않고 project head만 provider version으로 조건부 갱신한다.
+- `RemoteStorageAdapter`가 인증, 변경 cursor, 읽기, 조건부 쓰기, 삭제, quota를 제공한다.
+- provider adapter와 도메인 merge, conflict inbox, Vault serialization을 분리한다.
+- 로컬 750ms 자동 저장과 원격 저장 빈도를 분리한다.
+- media는 metadata와 별도 queue로 전송하고 지연 다운로드를 허용한다.
+
+### 후보 검증
+
+- Dropbox App Folder와 PKCE로 GitHub Pages PWA 연결을 검증한다.
+- Dropbox folder cursor, `rev`, content hash로 초기 pull과 조건부 write를 검증한다.
+- Google Drive `drive.file`, Changes token, file version으로 같은 fixture를 실행한다.
+- 기존 Supabase adapter는 magic-link, RLS, private Storage, custom pull cursor 후보로 비교한다.
+- GitHub, Notion, iCloud는 기본 저장소가 아닌 권고 역할에 맞춰 후속 범위로 둔다.
+
+### 공통 전송 fixture
+
+- 프로젝트 20개와 PNG 100개를 올리고 빈 IndexedDB의 새 기기에서 복원한다.
+- 두 기기의 offline 동시 수정 후 어느 revision도 잃지 않고 conflict를 감지한다.
+- media 업로드 실패가 text metadata를 막지 않는지 확인한다.
+- token 만료, 앱 종료, 네트워크 전환, 공급자 화면의 직접 파일 변경을 확인한다.
+- 사용자가 provider 도구만으로 자료를 내려받아 읽고 복구할 수 있는지 확인한다.
+- 요청 수, 전송량, 저장 용량, 예상 비용, 재로그인 빈도를 기록한다.
+
+### Supabase 후보 선행 수정
+
+- magic-link redirect에 GitHub Pages base path를 포함한다.
+- 동일 `clientMutationId` 재전송 시 mutation receipt의 적용 revision을 반환한다.
+- 초기 full pull, 단조 증가 change cursor, tombstone pull을 추가한다.
+- Realtime은 cursor pull을 깨우는 신호로만 사용한다.
+
+### 선택 후 환경과 보안
+
+- 선택한 provider의 개인 프로젝트 또는 API 앱과 redirect URL을 등록한다.
+- GitHub Pages bundle과 저장소에 secret이나 장기 access token이 포함되지 않는지 확인한다.
+- Supabase 선택 시 migration, private bucket, explicit grants, RLS와 pgTAP을 실행한다.
+- Dropbox 선택 시 App Folder 최소 scope와 PKCE verifier 수명주기를 확인한다.
+- Google Drive 선택 시 `drive.file` 최소 scope와 OAuth consent 설정을 확인한다.
 
 ### 전송 동작
 
 - 로컬 project, immutable source, revision을 서버에 round-trip한다.
 - asset과 capture 업로드를 metadata queue와 독립적으로 재시도한다.
 - offline 편집 후 online 복귀 시 outbox가 순서대로 비워지는지 확인한다.
-- mutation receipt가 동일 `clientMutationId` 재전송을 멱등 처리하는지 확인한다.
+- provider version 또는 mutation receipt가 동일 작업 재전송을 멱등 처리하는지 확인한다.
 - auth 만료와 세션 갱신 실패가 로컬 저장을 방해하지 않는지 확인한다.
 
 종료 조건:
 
-- 비인증 요청과 다른 사용자가 모든 row와 Storage object를 읽거나 쓸 수 없다.
+- Dropbox, Google Drive, Supabase 비교 결과와 탈락 이유가 문서에 남는다.
+- 선택한 provider에서 허가하지 않은 요청이 다른 row 또는 object를 읽거나 쓸 수 없다.
 - 실패한 media upload가 metadata 저장과 다음 mutation을 막지 않는다.
 - 브라우저를 종료해도 pending outbox가 복원된다.
 - ZIP 없이 새 기기에서 로그인해 개인 자료를 내려받을 수 있다.
@@ -289,7 +324,7 @@ WebGPU는 기존 GLSL wrapper에 섞지 않는다. 기능 감지와 오류 계�
 | UI | Testing Library 수집·검색·설정 | touch keyboard·safe area·VoiceOver |
 | PWA | production build, Chromium offline | Mobile Safari 홈 화면 offline·update |
 | 보안 | Chromium/WebKit fetch·popup·navigation·storage 차단 | staging response header와 Web Inspector |
-| sync | queue unit test, retry, conflict, serialization | 실제 Supabase RLS, magic link, 두 기기 |
+| sync | queue unit test, retry, conflict, Vault serialization | Dropbox·Drive·Supabase 실제 인증, 조건부 쓰기, 새 기기 복원, 두 기기 |
 | WebGPU | profile별 unit/E2E | 지원 iPhone/iPad device matrix |
 
 ## 주요 위험과 대응
@@ -297,11 +332,13 @@ WebGPU는 기존 GLSL wrapper에 섞지 않는다. 기능 감지와 오류 계�
 | 위험 | 영향 | 대응 |
 |---|---|---|
 | iOS에서 무한 루프가 host를 차단 | JavaScript profile 출시 불가 | 단계 1 차단 게이트, 실패 시 native 셸 또는 GLSL-only |
-| IndexedDB eviction | 개인 자료 유실 | persist 상태, ZIP, Supabase, quota 표시 |
+| IndexedDB eviction | 개인 자료 유실 | persist 상태, ZIP, 선택한 원격 저장소, quota 표시 |
 | service worker와 DB schema 불일치 | update 후 실행 실패 | archive version, migration test, staged rollout |
 | runtime bundle 증가 | cold install 지연 | profile별 chunk, 후속 runtime pack 평가 |
 | sync conflict 누락 | 코드 덮어쓰기 | optimistic lock, conflict inbox, 양쪽 revision 보존 |
-| private Storage policy 오류 | 데이터 노출 | 실제 pgTAP, 두 사용자 negative test, publishable key만 사용 |
+| 원격 저장 권한 오류 | 데이터 노출 | 최소 scope, secret 번들 검사, provider별 negative test |
+| 정적 PWA token 만료 | 동기화 중단·반복 로그인 | Dropbox·Drive foreground 재인증과 Supabase session 지속성 비교 |
+| 범용 파일의 직접 수정 | manifest 손상·revision 불일치 | checksum, provider version, conflict inbox, 복구 가능한 immutable 파일 |
 | async runtime 오류를 성공으로 기록 | 잘못된 last-known-good | 성공 판정 지연과 profile별 health event 보강 |
 | archive 손상·미지원 버전 | 복구 실패 | checksum, version migration, golden fixture |
 
@@ -309,9 +346,11 @@ WebGPU는 기존 GLSL wrapper에 섞지 않는다. 기능 감지와 오류 계�
 
 다음 항목은 구현 전에 사용자 선택 또는 실제 시험 결과가 필요하다.
 
-- 개인 PWA를 배포할 HTTPS 호스트
-- Supabase 프로젝트, 리전, 이메일 발송 설정
 - 첫 실기기 모델과 테스트할 iOS 26 build
+- 최종 원격 저장 provider: Dropbox, Google Drive, Supabase
+- 사용자에게 보이는 일반 폴더와 provider app folder 중 우선순위
+- token 만료 시 foreground 재인증 허용 여부
+- Supabase 선택 시 프로젝트, 리전, 이메일 발송 설정
 - 프로젝트·asset별 권장 용량과 경고 기준
 - conflict 화면에서 기본으로 강조할 선택 방식
 - media 원본을 모든 기기에 자동 다운로드할지 필요할 때만 받을지
@@ -322,15 +361,16 @@ WebGPU는 기존 GLSL wrapper에 섞지 않는다. 기능 감지와 오류 계�
 
 다음 작업 세션에서는 아래 순서로 진행한다.
 
-1. 실제 iOS 26+ iPhone에서 GitHub Pages staging과 `docs/ios-device-validation.md`를 실행한다.
-2. 홈 화면 설치, service worker update, 완전 오프라인 재시작을 확인한다.
-3. 결과에 따라 PWA 유지, GLSL-only, native 셸 조기 도입 중 경로를 확정한다.
-4. 통과한 경우 실제 Supabase 프로젝트에 migration을 적용한다.
-5. pgTAP과 두 사용자 RLS negative test를 실행한다.
-6. magic-link와 단일 기기 push/pull을 연결한다.
-7. 두 기기 conflict fixture와 conflict inbox를 구현한다.
-8. 일주일 개인 사용에서 저장·검색·capture·동기화 문제를 기록한다.
-9. 관찰된 작업량을 기준으로 WebGPU milestone 일정과 범위를 산정한다.
+1. `docs/next-session-handoff.md`와 `docs/sync-storage-evaluation.md`를 읽는다.
+2. `Fieldnote Vault v1`과 `RemoteStorageAdapter` 계약을 테스트로 고정한다.
+3. Dropbox App Folder·PKCE·cursor·조건부 write 최소 spike를 구현한다.
+4. Google Drive 또는 기존 Supabase 후보에 동일 fixture를 실행한다.
+5. 인증 지속성, 새 기기 복원, conflict 보존, media 실패, 비용을 비교해 provider를 확정한다.
+6. 선택한 provider의 단일 사용자 push/pull과 실제 권한 negative test를 완료한다.
+7. iOS 상세 기기 문서의 hard-stop, context loss, memory pressure, offline, ZIP 항목을 보완한다.
+8. 두 기기 conflict fixture와 conflict inbox를 구현한다.
+9. 일주일 개인 사용에서 저장·검색·capture·동기화 문제를 기록한다.
+10. 관찰된 작업량을 기준으로 WebGPU milestone 일정과 범위를 산정한다.
 
 ## 완료 정의
 
@@ -360,5 +400,7 @@ WebGPU는 기존 GLSL wrapper에 섞지 않는다. 기능 감지와 오류 계�
 
 - [개발 경과](development-history.md)
 - [iOS 실제 기기 검증](ios-device-validation.md)
+- [동기화 저장소 비교](sync-storage-evaluation.md)
+- [다음 세션 인계](next-session-handoff.md)
 - [설계 계약](superpowers/specs/2026-09-12-mobile-creative-coding-notebook-design.md)
 - [최초 구현 계획](superpowers/plans/2026-09-12-mobile-creative-coding-notebook.md)
