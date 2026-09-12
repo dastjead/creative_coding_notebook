@@ -28,6 +28,15 @@ describe('project domain', () => {
     expect(aggregate.project.draftCode).toContain('vec4(0.)');
   });
 
+  it('uses a Korean title when a note is collected without one', async () => {
+    const aggregate = await createProject(
+      { code: 'void main(){}', profileId: 'glsl-webgl2' },
+      context,
+    );
+
+    expect(aggregate.project.title).toBe('제목 없는 노트');
+  });
+
   it('creates a revision linked to the current revision', async () => {
     const aggregate = await createProject(
       { code: 'function setup(){}', title: 'Seed', profileId: 'p5-webgl' },

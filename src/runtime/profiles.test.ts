@@ -54,5 +54,16 @@ describe('runtime profiles', () => {
       'three-webgl',
     ]);
     expect(runtimeProfiles.every((profile) => profile.version === '1')).toBe(true);
+    expect(runtimeProfiles.map((profile) => profile.description)).toEqual([
+      'GLSL 조각 셰이더입니다. main(), mainImage(), twigl 본문 형식을 지원합니다.',
+      '단일 파일로 작성된 p5.js 전역 모드 WebGL 스케치입니다.',
+      'THREE 전역 객체를 사용하는 three.js WebGL 스크립트입니다.',
+    ]);
+  });
+
+  it('explains unsupported GLSL entry points in Korean', () => {
+    expect(() => buildGlslFragment('vec3 color = vec3(1.0);')).toThrow(
+      'GLSL 코드를 실행할 수 없습니다. main(), mainImage(), 또는 FC와 o를 사용하는 twigl 본문 형식이 필요합니다.',
+    );
   });
 });

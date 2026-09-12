@@ -102,7 +102,7 @@ function installAssets(assets: NonNullable<Extract<RunnerCommand, { type: 'RUN' 
   (window as Window & { ASSETS?: Readonly<Record<string, string>> }).ASSETS = new Proxy(urls, {
     get(target, property, receiver) {
       if (typeof property === 'string' && !(property in target)) {
-        const error = new Error(`로컬 에셋을 찾을 수 없습니다: ${property}`);
+        const error = new Error(`추가한 파일을 찾을 수 없습니다: ${property}`);
         error.name = 'AssetError';
         throw error;
       }
@@ -115,17 +115,17 @@ function runGlsl(code: string) {
   const canvas = document.createElement('canvas');
   document.body.append(canvas);
   const gl = canvas.getContext('webgl2', { antialias: false, preserveDrawingBuffer: true });
-  if (!gl) throw new Error('WebGL2 is not available in this browser.');
+  if (!gl) throw new Error('이 브라우저에서는 WebGL 2를 사용할 수 없습니다.');
   const vertex = compileShader(gl, gl.VERTEX_SHADER, `#version 300 es
     in vec2 position;
     void main(){ gl_Position = vec4(position, 0.0, 1.0); }`);
   const fragment = compileShader(gl, gl.FRAGMENT_SHADER, buildGlslFragment(code).source);
   const program = gl.createProgram();
-  if (!program) throw new Error('Unable to create WebGL program.');
+  if (!program) throw new Error('WebGL 프로그램을 만들 수 없습니다.');
   gl.attachShader(program, vertex);
   gl.attachShader(program, fragment);
   gl.linkProgram(program);
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program) ?? 'Shader link failed.');
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program) ?? '셰이더를 연결하지 못했습니다.');
   gl.useProgram(program);
   const buffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
@@ -156,11 +156,11 @@ function runGlsl(code: string) {
 
 function compileShader(gl: WebGL2RenderingContext, type: number, source: string) {
   const shader = gl.createShader(type);
-  if (!shader) throw new Error('Unable to create shader.');
+  if (!shader) throw new Error('셰이더를 만들 수 없습니다.');
   gl.shaderSource(shader, source);
   gl.compileShader(shader);
   if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    const raw = gl.getShaderInfoLog(shader) ?? 'Shader compilation failed.';
+    const raw = gl.getShaderInfoLog(shader) ?? '셰이더를 컴파일하지 못했습니다.';
     const parsed = parseShaderLog(raw);
     const error = new Error(parsed.message);
     Object.assign(error, parsed);
@@ -186,11 +186,19 @@ function resizeCanvas(canvas: HTMLCanvasElement) {
 function captureFirstCanvas() {
   const canvas = document.querySelector('canvas');
   if (!canvas) {
-    fail('No canvas is available to capture.', 'asset');
+    fail('캡처할 화면이 없습니다. 코드를 먼저 실행해 주세요.', 'asset');
     return;
   }
   try {
-    emit({ type: 'CAPTURED', dataUrl: canvas.toDataURL('image/png'), width: canvas.width, height: canvas.height });
+    const capture = document.createElement('canvas');
+    capture.width = canvas.width;
+    capture.height = canvas.height;
+    const context = capture.getContext('2d');
+    if (!context) throw new Error('캡처 이미지를 만들 수 없습니다.');
+    context.fillStyle = '#10100f';
+    context.fillRect(0, 0, capture.width, capture.height);
+    context.drawImage(canvas, 0, 0);
+    emit({ type: 'CAPTURED', dataUrl: capture.toDataURL('image/png'), width: capture.width, height: capture.height });
   } catch (error) {
     fail(error, 'security');
   }

@@ -13,7 +13,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Fieldnote — Creative Code Archive',
+        name: 'Fieldnote — 크리에이티브 코드 보관함',
         short_name: 'Fieldnote',
         description: '모바일 크리에이티브 코딩 노트북',
         theme_color: '#f1eddf',

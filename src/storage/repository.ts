@@ -83,6 +83,7 @@ export interface ProjectRepository {
   finishRun(revisionId: string, result: Extract<RunStatus, 'success' | 'error' | 'stopped'>): Promise<void>;
   restoreLastSuccessful(projectId: string): Promise<ProjectRecord | undefined>;
   softDelete(projectId: string): Promise<void>;
+  restoreDeleted(projectId: string): Promise<void>;
 }
 
 export class DexieProjectRepository implements ProjectRepository {
@@ -193,11 +194,19 @@ export class DexieProjectRepository implements ProjectRepository {
     await this.notify({ channel: 'metadata', project: await this.requireProject(projectId) });
   }
 
+  async restoreDeleted(projectId: string): Promise<void> {
+    await this.db.projects.update(projectId, {
+      deletedAt: undefined,
+      updatedAt: defaultDomainContext.now(),
+    });
+    await this.notify({ channel: 'metadata', project: await this.requireProject(projectId) });
+  }
+
   async duplicate(projectId: string): Promise<ProjectAggregate> {
     const project = await this.requireProject(projectId);
     const source = await this.requireOriginal(projectId);
     return this.create({
-      title: `${project.title} — copy`,
+      title: `${project.title} — 사본`,
       code: project.draftCode,
       notes: project.notes,
       tags: project.tags,
@@ -290,10 +299,10 @@ export class DexieProjectRepository implements ProjectRepository {
   async importArchive(blob: Blob): Promise<string> {
     const zip = await JSZip.loadAsync(await readBlobArrayBuffer(blob));
     const manifestFile = zip.file('manifest.json');
-    if (!manifestFile) throw new Error('Archive is missing manifest.json');
+    if (!manifestFile) throw new Error('올바른 노트 백업이 아닙니다. manifest.json 파일이 없습니다.');
     const manifest = JSON.parse(await manifestFile.async('text')) as ArchiveManifest;
     if (manifest.format !== 'creative-coding-notebook' || manifest.version !== 1) {
-      throw new Error('Unsupported notebook archive');
+      throw new Error('지원하지 않는 노트 백업 형식입니다.');
     }
     const projectId = defaultDomainContext.id();
     const sourceId = defaultDomainContext.id();
@@ -366,13 +375,13 @@ export class DexieProjectRepository implements ProjectRepository {
 
   private async requireProject(id: string): Promise<ProjectRecord> {
     const project = await this.db.projects.get(id);
-    if (!project) throw new Error(`Project not found: ${id}`);
+    if (!project) throw new Error(`노트를 찾을 수 없습니다: ${id}`);
     return project;
   }
 
   private async requireOriginal(projectId: string): Promise<OriginalSource> {
     const source = await this.getOriginal(projectId);
-    if (!source) throw new Error(`Original source not found: ${projectId}`);
+    if (!source) throw new Error(`원본 코드를 찾을 수 없습니다: ${projectId}`);
     return source;
   }
 
@@ -393,7 +402,7 @@ async function readBlobArrayBuffer(blob: Blob): Promise<ArrayBuffer> {
   if (typeof blob.arrayBuffer === 'function') return blob.arrayBuffer();
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onerror = () => reject(reader.error ?? new Error('Could not read archive'));
+    reader.onerror = () => reject(reader.error ?? new Error('노트 백업을 읽을 수 없습니다.'));
     reader.onload = () => resolve(reader.result as ArrayBuffer);
     reader.readAsArrayBuffer(blob);
   });

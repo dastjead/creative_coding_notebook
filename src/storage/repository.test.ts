@@ -61,6 +61,16 @@ describe('DexieProjectRepository', () => {
     expect((await repository.getProject(created.project.id))?.deletedAt).toBeTruthy();
   });
 
+  it('restores a soft-deleted note for undo', async () => {
+    const created = await repository.create({ code: 'void main(){}', profileId: 'glsl-webgl2' });
+    await repository.softDelete(created.project.id);
+
+    await repository.restoreDeleted(created.project.id);
+
+    expect((await repository.getProject(created.project.id))?.deletedAt).toBeUndefined();
+    expect((await repository.list()).map((project) => project.id)).toEqual([created.project.id]);
+  });
+
   it('round-trips a project through a readable zip archive', async () => {
     const created = await repository.create({
       title: 'Portable fragment',

@@ -11,7 +11,7 @@ describe('detectProfiles', () => {
     const matches = detectProfiles('for(float z,d;z<1e2;z+=d){o.rgb+=sin(FC.x/r.x+t);}')
 
     expect(matches[0]).toMatchObject({ profileId: 'glsl-webgl2', confidence: 1 });
-    expect(matches[0]?.reasons).toContain('twigl geekest body aliases');
+    expect(matches[0]?.reasons).toContain('twigl 본문 축약형 FC와 o를 감지했습니다.');
   });
 
   it('ranks p5 global sketches as p5', () => {

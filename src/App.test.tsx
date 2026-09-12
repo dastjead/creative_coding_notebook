@@ -13,23 +13,31 @@ describe('Notebook app', () => {
 
   afterEach(async () => {
     cleanup();
+    window.history.replaceState(null, '', '/');
     await repository.destroy();
   });
 
-  it('collects code, suggests a profile, and opens the working copy', async () => {
+  it('collects original code into a new note with Korean task labels', async () => {
     const user = userEvent.setup();
     render(<App repository={repository} />);
-    await user.click((await screen.findAllByRole('button', { name: '새 실험' }))[0]);
+    await user.click((await screen.findAllByRole('button', { name: '새 노트' }))[0]);
+    expect(screen.queryByRole('navigation', { name: '주 탐색' })).not.toBeInTheDocument();
+    expect(window.location.hash).toBe('#/collect');
     await user.type(screen.getByLabelText('제목'), 'Red current');
     await user.type(screen.getByLabelText('출처 URL'), 'https://example.com/red');
-    fireEvent.change(screen.getByLabelText('수집한 코드'), {
+    fireEvent.change(screen.getByLabelText('원본 코드'), {
       target: { value: 'void mainImage(out vec4 c, in vec2 p){c=vec4(1.,0.,0.,1.);}' },
     });
 
     expect(screen.getByRole('heading', { name: 'GLSL / Shadertoy' })).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: '작업본 만들기' }));
+    await user.click(screen.getByRole('button', { name: '노트 만들기' }));
 
-    expect(await screen.findByLabelText('프로젝트 제목')).toHaveValue('Red current');
+    expect(await screen.findByLabelText('노트 제목')).toHaveValue('Red current');
+    expect(screen.getByRole('tab', { name: '코드' })).toHaveAttribute('aria-controls', 'code-panel');
+    expect(screen.getByRole('tab', { name: /결과/ })).toHaveAttribute('aria-controls', 'preview-panel');
+    fireEvent.keyDown(screen.getByRole('tab', { name: '코드' }), { key: 'ArrowRight' });
+    expect(screen.getByRole('tab', { name: /결과/ })).toHaveAttribute('aria-selected', 'true');
+    expect(window.location.hash).toMatch(/^#\/note\//);
     expect(screen.getByRole('button', { name: '실행' })).toBeInTheDocument();
     expect((await repository.list())[0]?.draftCode).toContain('mainImage');
   });
@@ -40,10 +48,10 @@ describe('Notebook app', () => {
     const user = userEvent.setup();
     render(<App repository={repository} />);
 
-    await user.type(await screen.findByLabelText('라이브러리 검색'), 'sky');
+    await user.type(await screen.findByLabelText('보관함 검색'), 'sky');
     expect(await screen.findByText('Aurora field')).toBeInTheDocument();
     expect(screen.queryByText('Red noise')).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Aurora field 즐겨찾기' }));
+    await user.click(screen.getByRole('button', { name: 'Aurora field 즐겨찾기 추가' }));
 
     await waitFor(async () => {
       expect((await repository.getProject(first.project.id))?.favorite).toBe(true);
@@ -62,9 +70,23 @@ describe('Notebook app', () => {
     render(<App repository={repository} />);
 
     const file = new File([archive], 'portable-orbit.zip', { type: 'application/zip' });
-    await user.upload(await screen.findByLabelText('프로젝트 ZIP 가져오기'), file);
+    await user.upload(await screen.findByLabelText('노트 백업 가져오기'), file);
 
     expect(await screen.findByText('Portable orbit')).toBeInTheDocument();
     expect((await repository.list())).toHaveLength(1);
+  });
+
+  it('offers an undo action after deleting a note', async () => {
+    const created = await repository.create({ title: 'Temporary light', code: 'void main(){}', profileId: 'glsl-webgl2' });
+    const user = userEvent.setup();
+    render(<App repository={repository} />);
+
+    await user.click(await screen.findByRole('button', { name: 'Temporary light 삭제' }));
+    expect(await screen.findByRole('status')).toHaveTextContent('노트를 삭제했습니다.');
+    expect(screen.queryByText('Temporary light')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '삭제 실행 취소' }));
+    expect(await screen.findByText('Temporary light')).toBeInTheDocument();
+    expect((await repository.getProject(created.project.id))?.deletedAt).toBeUndefined();
   });
 });

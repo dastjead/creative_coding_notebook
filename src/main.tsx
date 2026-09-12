@@ -1,4 +1,5 @@
-import '@fontsource-variable/newsreader';
+import '@fontsource-variable/hahmlet';
+import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css';
 import '@fontsource/ibm-plex-mono/400.css';
 import '@fontsource/ibm-plex-mono/500.css';
 import { StrictMode } from 'react';

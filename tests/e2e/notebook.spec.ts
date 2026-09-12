@@ -6,49 +6,62 @@ const fixture = (path: string) => readFileSync(resolve(process.cwd(), 'tests/fix
 
 test('collects and renders a GLSL experiment in the isolated runner', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: '새 실험' }).first().click();
+  await page.getByRole('button', { name: '새 노트' }).first().click();
   await page.getByLabel('제목').fill('Red current');
   await page.getByLabel('출처 URL').fill('https://example.com/red');
-  await page.getByLabel('수집한 코드').fill(`void mainImage(out vec4 color, in vec2 point) {
+  await page.getByLabel('원본 코드').fill(`void mainImage(out vec4 color, in vec2 point) {
     vec2 uv = point / iResolution.xy;
-    color = vec4(uv.x, 0.08, uv.y, 1.0);
+    color = vec4(uv.x, 0.08, uv.y, 0.0);
   }`);
   await expect(page.getByRole('heading', { name: 'GLSL / Shadertoy' })).toBeVisible();
-  await page.getByRole('button', { name: '작업본 만들기' }).click();
-  await expect(page.getByLabel('프로젝트 제목')).toHaveValue('Red current');
-  await page.getByRole('button', { name: '실행' }).click();
+  await page.getByRole('button', { name: '노트 만들기' }).click();
+  await expect(page.getByLabel('노트 제목')).toHaveValue('Red current');
+  await page.getByRole('button', { name: '실행', exact: true }).click();
 
-  const runner = page.frameLocator('iframe[title="Creative code preview"]');
+  const runner = page.frameLocator('iframe[title="크리에이티브 코드 미리보기"]');
   await expect(runner.locator('canvas')).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByText('RUNNING', { exact: true })).toBeVisible();
+  await expect(page.getByText('실행 중', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: '캡처' }).click();
-  await expect(page.getByAltText('Red current 캡처')).toBeVisible();
-  await page.getByRole('button', { name: 'ARCHIVE' }).click();
+  await expect(page.getByRole('status')).toContainText('캡처를 저장했습니다.');
+  await page.getByText('노트 정보와 파일').click();
+  const capture = page.getByAltText('Red current 캡처');
+  await expect(capture).toBeVisible();
+  const centerAlpha = await capture.evaluate(async (image: HTMLImageElement) => {
+    await image.decode();
+    const sample = document.createElement('canvas');
+    sample.width = image.naturalWidth;
+    sample.height = image.naturalHeight;
+    const context = sample.getContext('2d', { willReadFrequently: true })!;
+    context.drawImage(image, 0, 0);
+    return context.getImageData(Math.floor(sample.width / 2), Math.floor(sample.height / 2), 1, 1).data[3];
+  });
+  expect(centerAlpha).toBe(255);
+  await page.getByRole('button', { name: '보관함', exact: true }).click();
   await expect(page.getByAltText('대표 캡처')).toBeVisible();
 });
 
 test('wraps and renders a twigl geekest golf body', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: '새 실험' }).first().click();
+  await page.getByRole('button', { name: '새 노트' }).first().click();
   await page.getByLabel('제목').fill('Twigl golf');
-  await page.getByLabel('수집한 코드').fill(fixture('glsl/twigl-geekest.glsl'));
+  await page.getByLabel('원본 코드').fill(fixture('glsl/twigl-geekest.glsl'));
   await expect(page.getByRole('heading', { name: 'GLSL / Shadertoy' })).toBeVisible();
-  await page.getByRole('button', { name: '작업본 만들기' }).click();
-  await page.getByRole('button', { name: '실행' }).click();
+  await page.getByRole('button', { name: '노트 만들기' }).click();
+  await page.getByRole('button', { name: '실행', exact: true }).click();
 
-  await expect(page.frameLocator('iframe[title="Creative code preview"]').locator('canvas')).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByText('RUNNING', { exact: true })).toBeVisible();
+  await expect(page.frameLocator('iframe[title="크리에이티브 코드 미리보기"]').locator('canvas')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText('실행 중', { exact: true })).toBeVisible();
   await expect(page.getByRole('alert')).toHaveCount(0);
 });
 
 test('keeps a saved project across a page reload', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: '새 실험' }).first().click();
+  await page.getByRole('button', { name: '새 노트' }).first().click();
   await page.getByLabel('제목').fill('Persistent orbit');
-  await page.getByLabel('수집한 코드').fill('function setup(){ createCanvas(200, 200, WEBGL); }');
-  await page.getByRole('button', { name: '작업본 만들기' }).click();
-  await expect(page.getByLabel('프로젝트 제목')).toHaveValue('Persistent orbit');
-  await page.getByRole('button', { name: 'ARCHIVE' }).click();
+  await page.getByLabel('원본 코드').fill('function setup(){ createCanvas(200, 200, WEBGL); }');
+  await page.getByRole('button', { name: '노트 만들기' }).click();
+  await expect(page.getByLabel('노트 제목')).toHaveValue('Persistent orbit');
+  await page.getByRole('button', { name: '보관함', exact: true }).click();
   await expect(page.getByText('Persistent orbit')).toBeVisible();
 
   await page.reload();
@@ -62,11 +75,11 @@ test('reopens the installed app shell and local archive while offline', async ({
     if (!('serviceWorker' in navigator)) throw new Error('Service worker unsupported');
     await navigator.serviceWorker.ready;
   });
-  await page.getByRole('button', { name: '새 실험' }).first().click();
+  await page.getByRole('button', { name: '새 노트' }).first().click();
   await page.getByLabel('제목').fill('Offline field');
-  await page.getByLabel('수집한 코드').fill(fixture('glsl/success.glsl'));
-  await page.getByRole('button', { name: '작업본 만들기' }).click();
-  await page.getByRole('button', { name: 'ARCHIVE' }).click();
+  await page.getByLabel('원본 코드').fill(fixture('glsl/success.glsl'));
+  await page.getByRole('button', { name: '노트 만들기' }).click();
+  await page.getByRole('button', { name: '보관함', exact: true }).click();
   await expect(page.getByText('Offline field')).toBeVisible();
 
   await context.setOffline(true);
@@ -84,32 +97,33 @@ for (const profile of [
 ]) {
   test(`runs the bundled ${profile.name} profile without a network dependency`, async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('button', { name: '새 실험' }).first().click();
+    await page.getByRole('button', { name: '새 노트' }).first().click();
     await page.getByLabel('제목').fill(`${profile.name} fixture`);
-    await page.getByLabel('수집한 코드').fill(fixture(profile.path));
+    await page.getByLabel('원본 코드').fill(fixture(profile.path));
     await expect(page.getByRole('heading', { name: profile.suggested })).toBeVisible();
-    await page.getByRole('button', { name: '작업본 만들기' }).click();
-    await page.getByRole('button', { name: '실행' }).click();
+    await page.getByRole('button', { name: '노트 만들기' }).click();
+    await page.getByRole('button', { name: '실행', exact: true }).click();
 
-    await expect(page.frameLocator('iframe[title="Creative code preview"]').locator('canvas')).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText('RUNNING', { exact: true })).toBeVisible();
+    await expect(page.frameLocator('iframe[title="크리에이티브 코드 미리보기"]').locator('canvas')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('실행 중', { exact: true })).toBeVisible();
   });
 }
 
 test('keeps the runner away from network, popups, host navigation, and browser storage', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: '새 실험' }).first().click();
-  await page.getByLabel('수집한 코드').fill(fixture('three/success.js'));
-  await page.getByRole('button', { name: '작업본 만들기' }).click();
-  await page.getByLabel('로컬 에셋 추가').setInputFiles({
+  await page.getByRole('button', { name: '새 노트' }).first().click();
+  await page.getByLabel('원본 코드').fill(fixture('three/success.js'));
+  await page.getByRole('button', { name: '노트 만들기' }).click();
+  await page.getByText('노트 정보와 파일').click();
+  await page.getByLabel('파일 추가').setInputFiles({
     name: 'pixel.png',
     mimeType: 'image/png',
     buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64'),
   });
   await expect(page.getByText('pixel.png')).toBeVisible();
-  await page.getByRole('button', { name: '실행' }).click();
-  await expect(page.frameLocator('iframe[title="Creative code preview"]').locator('canvas')).toBeVisible();
-  const runnerBody = page.frameLocator('iframe[title="Creative code preview"]').locator('body');
+  await page.getByRole('button', { name: '실행', exact: true }).click();
+  await expect(page.frameLocator('iframe[title="크리에이티브 코드 미리보기"]').locator('canvas')).toBeVisible();
+  const runnerBody = page.frameLocator('iframe[title="크리에이티브 코드 미리보기"]').locator('body');
   await runnerBody.waitFor({ state: 'attached' });
 
   const result = await runnerBody.evaluate(async () => {
@@ -130,12 +144,12 @@ test('keeps the runner away from network, popups, host navigation, and browser s
 
 test('reports a missing local asset separately from JavaScript errors', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: '새 실험' }).first().click();
-  await page.getByLabel('수집한 코드').fill(fixture('three/missing-asset.js'));
-  await page.getByRole('button', { name: '작업본 만들기' }).click();
-  await page.getByRole('button', { name: '실행' }).click();
+  await page.getByRole('button', { name: '새 노트' }).first().click();
+  await page.getByLabel('원본 코드').fill(fixture('three/missing-asset.js'));
+  await page.getByRole('button', { name: '노트 만들기' }).click();
+  await page.getByRole('button', { name: '실행', exact: true }).click();
 
   const error = page.getByRole('alert');
-  await expect(error).toContainText('ASSET');
+  await expect(error).toContainText('파일 오류');
   await expect(error).toContainText('missing-texture.png');
 });

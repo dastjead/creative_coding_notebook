@@ -102,7 +102,7 @@ export class RunnerSession {
     this.nonce = this.ids.nonce();
     this.runId = this.ids.runId();
     const frame = document.createElement('iframe');
-    frame.title = 'Creative code preview';
+    frame.title = '크리에이티브 코드 미리보기';
     frame.setAttribute('sandbox', 'allow-scripts');
     const params = new URLSearchParams({ nonce: this.nonce, runId: this.runId });
     frame.src = `${import.meta.env.BASE_URL}runner.html?${params}`;
@@ -129,7 +129,7 @@ export class RunnerSession {
       type: 'ERROR',
       nonce: this.nonce,
       runId: this.runId,
-      error: { category: 'javascript', message: '실행기가 응답하지 않아 격리 화면을 폐기했습니다.' },
+      error: { category: 'javascript', message: '코드가 응답하지 않아 실행을 중지하고 미리보기를 재시작했습니다. 편집 내용은 그대로 저장되어 있습니다.' },
     });
   }
 }

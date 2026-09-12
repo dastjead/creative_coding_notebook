@@ -28,7 +28,7 @@ export const runtimeProfiles: RuntimeProfile[] = [
     language: 'glsl',
     version: '1',
     runtimeVersion: 'WebGL2',
-    description: 'Fragment shader with main(), mainImage(), or a twigl geekest body',
+    description: 'GLSL 조각 셰이더입니다. main(), mainImage(), twigl 본문 형식을 지원합니다.',
   },
   {
     id: 'p5-webgl',
@@ -36,7 +36,7 @@ export const runtimeProfiles: RuntimeProfile[] = [
     language: 'javascript',
     version: '1',
     runtimeVersion: '1.11.10',
-    description: 'Single-file global-mode p5.js sketch',
+    description: '단일 파일로 작성된 p5.js 전역 모드 WebGL 스케치입니다.',
   },
   {
     id: 'three-webgl',
@@ -44,13 +44,13 @@ export const runtimeProfiles: RuntimeProfile[] = [
     language: 'javascript',
     version: '1',
     runtimeVersion: '0.180.0',
-    description: 'Single script with the THREE namespace available',
+    description: 'THREE 전역 객체를 사용하는 three.js WebGL 스크립트입니다.',
   },
 ];
 
 export function getRuntimeProfile(id: RuntimeProfileId): RuntimeProfile {
   const profile = runtimeProfiles.find((candidate) => candidate.id === id);
-  if (!profile) throw new Error(`Unknown runtime profile: ${id}`);
+  if (!profile) throw new Error(`지원하지 않는 실행 방식입니다: ${id}`);
   return profile;
 }
 
@@ -66,7 +66,7 @@ export function buildGlslFragment(code: string): PreparedGlsl {
     && /\bFC\b/.test(userCode)
     && /\bo(?:\.[rgba]{1,4})?\s*(?:[+*/-]?=)/.test(userCode);
   if (!hasMain && !hasMainImage && !isTwiglGeekestBody) {
-    throw new Error('GLSL requires void main(), Shadertoy mainImage(), or a twigl geekest body using FC and o.');
+    throw new Error('GLSL 코드를 실행할 수 없습니다. main(), mainImage(), 또는 FC와 o를 사용하는 twigl 본문 형식이 필요합니다.');
   }
   const aliases = isTwiglGeekestBody
     ? '#define FC gl_FragCoord\n#define r iResolution.xy\n#define t iTime\n#define o fragmentColor'

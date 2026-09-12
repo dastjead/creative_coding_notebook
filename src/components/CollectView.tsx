@@ -34,39 +34,40 @@ export function CollectView({ repository, onCreated, onCancel }: CollectViewProp
 
   return (
     <section className="collect-view page-enter" aria-labelledby="collect-heading">
-      <header className="section-header">
+      <header className="section-header collect-header">
         <div>
-          <p className="eyebrow">INBOX / NEW SOURCE</p>
-          <h1 id="collect-heading">호기심을 붙잡아 두세요.</h1>
+          <p className="eyebrow">새로운 원본</p>
+          <h1 id="collect-heading">새 코드 수집</h1>
+          <p className="section-lede">호기심이 사라지기 전에 원본 그대로 붙잡아 두세요.</p>
         </div>
         <button type="button" className="text-button" onClick={onCancel}>취소</button>
       </header>
 
-      <div className="collect-grid">
+      <form className="collect-grid" onSubmit={(event) => { event.preventDefault(); void create(); }}>
         <div className="paper-form">
-          <label>제목<input aria-label="제목" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="나중에 떠올릴 수 있는 이름" /></label>
-          <label>출처 URL<input aria-label="출처 URL" value={sourceUrl} onChange={(event) => setSourceUrl(event.target.value)} inputMode="url" placeholder="https://…" /></label>
-          <label className="code-paste-label">수집한 코드<textarea aria-label="수집한 코드" value={code} onChange={(event) => setCode(event.target.value)} placeholder={starter} spellCheck={false} /></label>
+          <label>제목<input name="note-title" autoComplete="off" aria-label="제목" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="나중에 떠올릴 수 있는 이름" /></label>
+          <label>출처 URL<input name="source-url" type="url" autoComplete="url" aria-label="출처 URL" value={sourceUrl} onChange={(event) => setSourceUrl(event.target.value)} inputMode="url" placeholder="https://…" /></label>
+          <label className="code-paste-label">원본 코드<textarea name="original-code" aria-label="원본 코드" value={code} onChange={(event) => setCode(event.target.value)} placeholder={starter} spellCheck={false} /></label>
         </div>
 
         <aside className="profile-ticket">
-          <p className="ticket-number">PROFILE / 01</p>
+          <p className="ticket-number">실행 방식 · 01</p>
           <div className="profile-mark"><Icon name="code" size={28} /></div>
-          <p className="profile-kicker">실행 프로필 제안</p>
+          <p className="profile-kicker">감지된 실행 방식</p>
           <h2>{selectedProfile.label}</h2>
           <p>{selectedProfile.description}</p>
-          <label>직접 선택
-            <select value={profileId} onChange={(event) => setManualProfile(event.target.value as RuntimeProfileId)}>
+          <label>실행 방식 변경
+            <select name="runtime-profile" value={profileId} onChange={(event) => setManualProfile(event.target.value as RuntimeProfileId)}>
               {runtimeProfiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.label}</option>)}
             </select>
           </label>
-          <div className="confidence-line"><span style={{ width: `${Math.max(12, suggestions[0].confidence * 100)}%` }} /></div>
+          <div className="confidence-line" role="meter" aria-label="실행 방식 감지 신뢰도" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(suggestions[0].confidence * 100)}><span style={{ width: `${Math.max(12, suggestions[0].confidence * 100)}%` }} /></div>
           <p className="reason">{suggestions.find((item) => item.profileId === profileId)?.reasons[0]}</p>
-          <button type="button" className="primary-button" onClick={create} disabled={!code.trim()}>
-            작업본 만들기 <Icon name="plus" />
+          <button type="submit" className="primary-button" disabled={!code.trim()}>
+            노트 만들기 <Icon name="plus" />
           </button>
         </aside>
-      </div>
+      </form>
     </section>
   );
 }

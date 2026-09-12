@@ -14,6 +14,21 @@ interface EditorViewProps {
   onChanged(): void;
 }
 
+const runnerLabels = {
+  idle: '대기',
+  ready: '준비됨',
+  running: '실행 중',
+  error: '오류',
+} as const;
+
+const errorLabels: Record<NormalizedRuntimeError['category'], string> = {
+  javascript: 'JavaScript 오류',
+  shader: '셰이더 오류',
+  unsupported: '지원되지 않음',
+  asset: '파일 오류',
+  security: '보안 제한',
+};
+
 export function EditorView({ projectId, repository, onBack, onChanged }: EditorViewProps) {
   const [project, setProject] = useState<ProjectRecord>();
   const [original, setOriginal] = useState<OriginalSource>();
@@ -24,6 +39,7 @@ export function EditorView({ projectId, repository, onBack, onChanged }: EditorV
   const [runnerState, setRunnerState] = useState<'idle' | 'ready' | 'running' | 'error'>('idle');
   const [error, setError] = useState<NormalizedRuntimeError>();
   const [activeRevision, setActiveRevision] = useState<Revision>();
+  const [feedback, setFeedback] = useState('');
   const previewRoot = useRef<HTMLDivElement>(null);
   const session = useRef<RunnerSession | undefined>(undefined);
   const projectRef = useRef<ProjectRecord | undefined>(undefined);
@@ -70,6 +86,7 @@ export function EditorView({ projectId, repository, onBack, onChanged }: EditorV
         blob,
       });
       setCaptures(await repository.listCaptures(projectId));
+      setFeedback('캡처를 저장했습니다.');
     }
   }, [projectId, repository]);
 
@@ -93,7 +110,7 @@ export function EditorView({ projectId, repository, onBack, onChanged }: EditorV
     return () => window.clearTimeout(timeout);
   }, [onChanged, project, repository, saveState]);
 
-  if (!project || !original) return <div className="loading-state">작업본을 펼치는 중…</div>;
+  if (!project || !original) return <div className="loading-state">노트 불러오는 중…</div>;
   const profile = getRuntimeProfile(project.profileId);
   const update = (patch: Partial<ProjectRecord>) => {
     setProject((current) => current ? { ...current, ...patch } : current);
@@ -131,55 +148,71 @@ export function EditorView({ projectId, repository, onBack, onChanged }: EditorV
   const hardReset = () => {
     session.current?.hardReset();
     setRunnerState('idle');
+    setFeedback('실행 환경을 재시작했습니다.');
   };
   const restore = async () => {
     const restored = await repository.restoreLastSuccessful(project.id);
-    if (restored) setProject(restored);
+    if (restored) {
+      setProject(restored);
+      setSaveState('saved');
+      setFeedback('마지막 정상 실행본으로 복원했습니다.');
+    }
+  };
+  const handleTabKey = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const nextPane = event.key === 'ArrowLeft' || event.key === 'Home' ? 'code' : 'preview';
+    setActivePane(nextPane);
+    window.requestAnimationFrame(() => document.getElementById(`${nextPane}-tab`)?.focus());
   };
 
   return (
     <section className="editor-view page-enter">
       <header className="editor-header">
-        <button type="button" className="back-button" onClick={onBack}>← ARCHIVE</button>
+        <button type="button" className="back-button" aria-label="보관함" onClick={onBack}>← 보관함</button>
         <div className="editor-title-block">
-          <input aria-label="프로젝트 제목" value={project.title} onChange={(event) => update({ title: event.target.value })} />
-          <p>{profile.label} / WRAPPER 01</p>
+          <input name="note-title" autoComplete="off" aria-label="노트 제목" value={project.title} onChange={(event) => update({ title: event.target.value })} />
+          <p>{profile.label} · 실행 래퍼 01</p>
         </div>
-        <span className={`save-state ${saveState}`}>{saveState === 'saved' ? '저장됨' : saveState === 'saving' ? '저장 중' : '변경됨'}</span>
+        <span className={`save-state ${saveState}`} aria-live="polite">{saveState === 'saved' ? '저장 완료' : saveState === 'saving' ? '저장 중' : '저장 대기'}</span>
       </header>
 
-      <div className="editor-tabs" role="tablist" aria-label="편집 화면">
-        <button role="tab" aria-selected={activePane === 'code'} onClick={() => setActivePane('code')}>CODE</button>
-        <button role="tab" aria-selected={activePane === 'preview'} onClick={() => setActivePane('preview')}>OUTPUT <span className={`run-dot ${runnerState}`} /></button>
+      <div className="editor-tabs" role="tablist" aria-label="편집 화면" onKeyDown={handleTabKey}>
+        <button id="code-tab" role="tab" aria-controls="code-panel" aria-selected={activePane === 'code'} tabIndex={activePane === 'code' ? 0 : -1} onClick={() => setActivePane('code')}>코드</button>
+        <button id="preview-tab" role="tab" aria-controls="preview-panel" aria-selected={activePane === 'preview'} tabIndex={activePane === 'preview' ? 0 : -1} onClick={() => setActivePane('preview')}>결과 <span className={`run-dot ${runnerState}`} /></button>
       </div>
 
       <div className="workbench">
-        <div className={`code-pane ${activePane === 'code' ? 'is-active' : ''}`}>
-          <div className="pane-label"><span>WORKING REVISION</span><span>UTF–8</span></div>
+        <div id="code-panel" role="tabpanel" aria-labelledby="code-tab" className={`code-pane ${activePane === 'code' ? 'is-active' : ''}`}>
+          <div className="pane-label"><span>작업본</span><span>UTF–8</span></div>
           <CodeEditor value={project.draftCode} language={profile.language} onChange={(draftCode) => update({ draftCode })} />
         </div>
-        <div className={`preview-pane ${activePane === 'preview' ? 'is-active' : ''}`}>
-          <div className="pane-label"><span>LIVE OUTPUT</span><span>{runnerState.toUpperCase()}</span></div>
+        <div id="preview-panel" role="tabpanel" aria-labelledby="preview-tab" className={`preview-pane ${activePane === 'preview' ? 'is-active' : ''}`}>
+          <div className="pane-label"><span>실행 결과</span><span aria-live="polite">{runnerLabels[runnerState]}</span></div>
           <div className="preview-stage" ref={previewRoot} />
-          <div className="preview-coordinates">390 × 520 / DPR ≤ 1.5</div>
+          <div className="preview-coordinates">390 × 520 · 화면 밀도 ≤ 1.5</div>
         </div>
       </div>
 
-      {error && <div className="error-strip" role="alert"><strong>{error.category.toUpperCase()}</strong><span>{error.line ? `L${error.line} · ` : ''}{error.message}</span><button type="button" onClick={restore}>마지막 성공본 복구</button></div>}
+      {error && <div className="error-strip" role="alert"><strong>{errorLabels[error.category]}</strong><span>{error.line ? `${error.line}번째 줄 · ` : ''}{error.message}</span><button type="button" onClick={restore}>마지막 정상 실행본으로 복원</button></div>}
 
       <div className="run-toolbar" aria-label="실행 도구">
         <button type="button" className="run-button" onClick={run}><Icon name="play" /><span>실행</span></button>
         <button type="button" onClick={stop}><Icon name="stop" /><span>중지</span></button>
-        <button type="button" onClick={hardReset}><Icon name="reset" /><span>초기화</span></button>
-        <button type="button" onClick={() => session.current?.capture()} disabled={runnerState !== 'running'}><Icon name="camera" /><span>캡처</span></button>
+        <button type="button" aria-label="실행 환경 재시작" onClick={hardReset}><Icon name="reset" /><span>재시작</span></button>
+        <button type="button" onClick={() => { setFeedback('캡처 중…'); session.current?.capture(); }} disabled={runnerState !== 'running'}><Icon name="camera" /><span>캡처</span></button>
       </div>
 
-      <div className="editor-meta-grid">
-        <label>메모<textarea value={project.notes} onChange={(event) => update({ notes: event.target.value })} placeholder="이 실험에서 기억할 것…" /></label>
-        <label>태그<input value={project.tags.join(', ')} onChange={(event) => update({ tags: event.target.value.split(',') })} placeholder="shader, light, field" /></label>
-        <details className="original-source"><summary>변경되지 않은 원본 보기</summary><pre>{original.rawCode}</pre>{original.sourceUrl && <a href={original.sourceUrl} target="_blank" rel="noreferrer">원본 링크 열기 ↗</a>}</details>
+      <p className={`editor-feedback ${feedback ? 'visible' : ''}`} role="status" aria-live="polite">{feedback}</p>
+
+      <details className="editor-inspector">
+        <summary>노트 정보와 파일</summary>
+        <div className="editor-meta-grid">
+        <label>메모<textarea name="notes" value={project.notes} onChange={(event) => update({ notes: event.target.value })} placeholder="이 노트에서 기억할 것…" /></label>
+        <label>태그<input name="tags" autoComplete="off" value={project.tags.join(', ')} onChange={(event) => update({ tags: event.target.value.split(',') })} placeholder="shader, light, field" /></label>
+        <details className="original-source"><summary>원본 코드 보기 · 읽기 전용</summary><pre>{original.rawCode}</pre>{original.sourceUrl && <a href={original.sourceUrl} target="_blank" rel="noreferrer">출처 열기 ↗</a>}</details>
         <div className="asset-panel">
-          <label className="asset-import">로컬 에셋 추가<input type="file" multiple onChange={async (event) => {
+          <label className="asset-import">파일 추가<input aria-label="파일 추가" type="file" multiple onChange={async (event) => {
             const files = [...(event.target.files ?? [])];
             for (const file of files) {
               const bytes = await file.arrayBuffer();
@@ -210,7 +243,8 @@ export function EditorView({ projectId, repository, onBack, onChanged }: EditorV
             }}
           />
         ))}</div>}
-      </div>
+        </div>
+      </details>
     </section>
   );
 }
@@ -222,7 +256,7 @@ function CaptureChoice({ capture, title, selected, onSelect }: { capture: Captur
     setUrl(next);
     return () => URL.revokeObjectURL(next);
   }, [capture.blob]);
-  return <button type="button" className={selected ? 'selected' : ''} onClick={onSelect} aria-label={`${title} 대표 캡처로 지정`}><img src={url} alt={`${title} 캡처`} /></button>;
+  return <button type="button" className={selected ? 'selected' : ''} onClick={onSelect} aria-pressed={selected} aria-label={`${title} 대표 캡처로 지정`}><img src={url} alt={`${title} 캡처`} width={capture.width} height={capture.height} />{selected && <span>대표</span>}</button>;
 }
 
 function dataUrlToBlob(dataUrl: string) {

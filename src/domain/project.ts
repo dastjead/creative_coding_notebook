@@ -62,7 +62,7 @@ export async function createProject(
   const project: ProjectRecord = {
     id: projectId,
     originalSourceId: sourceId,
-    title: input.title?.trim() || 'Untitled experiment',
+    title: input.title?.trim() || '제목 없는 노트',
     notes: input.notes?.trim() || '',
     tags: uniqueTags(input.tags ?? []),
     favorite: false,
