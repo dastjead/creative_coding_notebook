@@ -2,13 +2,13 @@
 
 - 작성 기준일: 2026년 9월 12일
 - 기준 브랜치: `main`
-- 기준 구현 커밋: `88104d3`
+- 기준 구현 커밋: `9560d9f`
 
 ## 문서 목적
 
 이 문서는 모바일 크리에이티브 코딩 노트북이 기획 문서에서 현재 구현 상태에 이르기까지 어떤 결정을 거쳤고, 무엇을 구현·검증했으며, 개발 중 발견한 문제를 어떻게 해결했는지 기록한다. 현재 코드를 인수인계하거나 다음 개발 단계의 출발점을 확인할 때 이 문서를 먼저 읽는다.
 
-현재 결론은 다음과 같다. 로컬 우선 PWA의 주요 기능과 선택적 Supabase 동기화 기반 코드는 구현되었고 자동화 검증도 통과했다. GitHub Pages HTTPS staging 배포와 원격 Chromium/WebKit smoke test도 완료했다. 다만 실제 iOS 26+ iPhone에서의 무한 루프 복구, 메모리 압박, 홈 화면 PWA 오프라인 재시작과 실제 Supabase 프로젝트의 RLS 검증은 아직 수행하지 않았다. 따라서 코드는 로컬 MVP 기준선에 도달했지만 기기 릴리스 게이트와 클라우드 운영 게이트는 열려 있다.
+현재 결론은 다음과 같다. 로컬 우선 PWA의 주요 기능과 선택적 Supabase 동기화 기반 코드는 구현되었고 자동화 검증도 통과했다. GitHub Pages HTTPS staging 배포와 원격 Chromium/WebKit smoke test도 완료했다. 모바일 디자인과 한글 사용성을 전면 정리했으며, 새 노트는 제목 없이 저장할 수 있고 생성 직후 정상 실행 화면을 대표 썸네일로 자동 보존한다. 다만 실제 iOS 26+ iPhone에서의 무한 루프 복구, 메모리 압박, 홈 화면 PWA 오프라인 재시작과 실제 Supabase 프로젝트의 RLS 검증은 아직 수행하지 않았다. 따라서 코드는 로컬 MVP 기준선에 도달했지만 기기 릴리스 게이트와 클라우드 운영 게이트는 열려 있다.
 
 ## 출발점과 제품 요구
 
@@ -146,6 +146,29 @@ Staging URL은 <https://dastjead.github.io/creative_coding_notebook/>이다.
 
 원문을 수정하지 않고 wrapper가 본문 전용 `main()`과 축약 전역을 제공하도록 확장했다. 함수형 GLSL을 본문 형식으로 오인하지 않도록 별도 판별 경계를 두고, 제공된 golf 코드를 Chromium/WebKit WebGL2에서 컴파일·렌더링하는 fixture를 추가했다.
 
+### 11 모바일 디자인과 한글 UX 개편
+
+커밋 `19441de`에서 390px 폭의 실제 사용 흐름을 기준으로 화면 구조와 명칭을 다시 정리했다.
+
+- Pretendard를 본문 UI, Hahmlet을 제목, IBM Plex Mono를 코드에 적용
+- 보관함, 새 노트, 설정, 코드, 결과 등 사용자 작업 중심의 한글 명칭으로 통일
+- hash route와 브라우저 뒤로가기, 모바일 하단 탐색, 삭제 실행 취소 추가
+- 44px 이상의 터치 영역, 16px 입력 글자, 명확한 focus와 상태 안내 적용
+- 저장소 사용량과 persistent storage 결과를 실제 브라우저 값으로 표시
+- 투명 WebGL canvas도 불투명 PNG로 보존하도록 capture 합성 보강
+
+### 12 자동 제목과 실행 화면 썸네일
+
+커밋 `9560d9f`에서 코드 수집 시 반복 입력과 보관함의 가상 이미지를 제거했다.
+
+- 새 코드 영역의 샘플 placeholder를 제거해 실제 입력 전에는 완전히 비어 있게 변경
+- 제목을 선택 입력으로 표시하고, 비워두면 `실행 방식 · 월.일 시:분` 형식으로 자동 생성
+- 노트 생성 직후 sandbox runner에서 한 번 자동 실행
+- 정상 실행 뒤 canvas가 두 프레임 연속 확인되는 `RENDERED` 신호에서 PNG를 캡처해 대표 썸네일로 저장
+- 이후 수동 실행은 대표 이미지를 자동으로 덮지 않으며, 사용자가 캡처한 장면만 새 대표 이미지가 됨
+- 아직 정상 실행하지 못한 노트는 생성형 장식 대신 `실행 화면 없음` 상태를 표시
+- 자동 실행이나 캡처가 실패해도 원본과 노트 저장은 유지
+
 ## 개발 중 확인한 문제와 해결
 
 | 문제 | 관찰된 증상 | 해결 | 남은 확인 |
@@ -179,8 +202,8 @@ Staging URL은 <https://dastjead.github.io/creative_coding_notebook/>이다.
 | 검증 | 결과 |
 |---|---|
 | `npm run check` | 통과 |
-| `npm test` | 9개 파일, 38개 테스트 통과 |
-| `npm run build` | production build 및 PWA precache 38개 항목 생성 |
+| `npm test` | 9개 파일, 45개 테스트 통과 |
+| `npm run build` | production build 및 PWA precache 217개 항목 생성 |
 | `npm run test:e2e` | 15개 통과, 1개 의도적 skip |
 | Chromium offline reload | 통과 |
 | Chromium/WebKit 세 프로필 실행 | 통과 |
@@ -188,7 +211,7 @@ Staging URL은 <https://dastjead.github.io/creative_coding_notebook/>이다.
 | Chromium/WebKit runner 보안 경계 | 통과 |
 | `npm audit --audit-level=moderate` | 취약점 0건 |
 | 390 × 844 시각 점검 | 수집, 실행, 라이브러리 화면 확인 |
-| GitHub Pages workflow | type check, 38개 테스트, build, deploy 통과 |
+| GitHub Pages workflow | type check, 45개 테스트, build, deploy 통과 |
 | 원격 HTTPS smoke test | Chromium/WebKit service worker와 GLSL runner 통과 |
 | twigl geekest golf fixture | Chromium/WebKit 컴파일·렌더링 통과 |
 

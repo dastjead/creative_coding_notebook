@@ -1,7 +1,7 @@
 # 모바일 크리에이티브 코딩 노트북 전체 개발 계획
 
 - 작성 기준일: 2026년 9월 12일
-- 현재 구현 기준선: `main`의 `88104d3`
+- 현재 구현 기준선: `main`의 `9560d9f`
 - 기준 제품 문서: [Notion 프로젝트 브리프](https://app.notion.com/p/3d767b855d6781549fe3c3b20034c3d9)
 
 ## 문서 목적
@@ -41,8 +41,9 @@
 | 도메인·원본·revision | 완료 | 자동 테스트 통과 |
 | Dexie 로컬 저장·검색 | 완료 | 자동 테스트 통과 |
 | ZIP 내보내기·가져오기 | 완료 | 빈 저장소 왕복 테스트 통과 |
+| 코드 수집 UX | 완료 | 빈 코드 입력, 선택 제목, 자동 제목 적용 |
 | GLSL, p5.js, three.js runner | 구현 완료 | Chromium/WebKit 통과, 실기기 미검증 |
-| PNG capture·대표 썸네일 | 구현 완료 | Chromium/WebKit 통과 |
+| PNG capture·대표 썸네일 | 구현 완료 | 생성 직후 자동 실행·캡처, Chromium/WebKit 통과 |
 | 로컬 asset | 구현 완료 | `ASSETS` 전달과 누락 오류 분리 |
 | PWA·오프라인 | 구현·Pages 배포 완료 | 원격 Chromium/WebKit 통과, Mobile Safari 미검증 |
 | runner 보안 경계 | 구현 완료 | 자동 검증 통과, 실기기 재확인 필요 |
@@ -81,7 +82,7 @@ npm run test:e2e
 npm audit --audit-level=moderate
 ```
 
-현재 기준은 단위·컴포넌트 테스트 38개, 모바일 E2E 15개 통과와 Playwright WebKit offline reload 1개 skip이다. 새 profile이나 저장 형식을 추가할 때 이 기준을 낮추지 않는다.
+현재 기준은 단위·컴포넌트 테스트 45개, 모바일 E2E 15개 통과와 Playwright WebKit offline reload 1개 skip이다. 새 profile이나 저장 형식을 추가할 때 이 기준을 낮추지 않는다.
 
 운영 규칙:
 
@@ -131,6 +132,15 @@ Staging URL: <https://dastjead.github.io/creative_coding_notebook/>
 우선순위: P0, 단계 1 직후
 
 ### 기능 보강
+
+완료된 보강:
+
+- [x] 새 코드 입력란의 샘플 placeholder를 제거한다.
+- [x] 제목이 비어 있으면 profile과 생성 시각으로 자동 이름을 만든다.
+- [x] 새 노트 생성 직후 정상 실행 화면을 자동 캡처해 대표 썸네일로 저장한다.
+- [x] 실제 capture가 없는 카드는 가상 이미지 대신 명시적인 빈 상태를 표시한다.
+
+남은 보강:
 
 - invalid ZIP, 손상 manifest, unsupported archive version 오류를 UI에 표시한다.
 - asset 이름 충돌, 삭제, 교체와 용량 표시를 추가한다.
